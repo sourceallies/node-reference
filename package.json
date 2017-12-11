@@ -17,6 +17,7 @@
   },
   "homepage": "https://github.com/prowe/node-reference#readme",
   "dependencies": {
+    "aws-sdk": "^2.167.0",
     "body-parser": "^1.18.2",
     "express": "^4.16.2"
   }

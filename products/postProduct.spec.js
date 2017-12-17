@@ -55,5 +55,9 @@ describe('products', function () {
                 })
                 .then(done, done.fail);
         });
+
+        it('should populate an id on the product', function(done) {
+            
+        });
     });
 });

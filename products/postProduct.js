@@ -1,4 +1,6 @@
-const documentClient = require('documentClient');
+'use strict';
+
+const documentClient = require('./documentClient');
 
 module.exports = function postProduct(req, res) {
     const product = req.body;

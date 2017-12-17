@@ -23,6 +23,7 @@
     "express": "^4.16.2"
   },
   "devDependencies": {
-    "jasmine": "^2.8.0"
+    "jasmine": "^2.8.0",
+    "proxyquire": "^1.8.0"
   }
 }

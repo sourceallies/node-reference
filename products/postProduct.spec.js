@@ -57,7 +57,11 @@ describe('products', function () {
         });
 
         it('should populate an id on the product', function(done) {
-            
+            this.postProduct(this.req, this.res)
+                .then(() => {
+                    expect(this.documentClient.put.calls.argsFor(0)[0].Item.id).toBeDefined();
+                })
+                .then(done, done.fail);
         });
     });
 });

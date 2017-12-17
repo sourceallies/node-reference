@@ -12,8 +12,8 @@ module.exports = async function postProduct(req, res) {
             TableName: "Products",
             Item: product
         }).promise();
-        
-        res.json(product)
+
+        res.json(product);
     } catch (e) {
         res.error(e);
     }

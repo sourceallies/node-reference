@@ -1,8 +1,8 @@
 {
   "name": "node-reference",
   "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
+  "description": "Reference implementation of a nodejs/dynamoDB RESTful web service",
+  "main": "server.js",
   "scripts": {
     "start": "node server.js",
     "test": "jasmine"

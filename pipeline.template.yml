@@ -1,0 +1,111 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: Pipeline for node-reference
+Parameters:
+  RepoToken:
+    Type: String
+    NoEcho: true
+    Description: OAuth Token for the github repository
+Resources:
+  PipelineRole:
+    Type: "AWS::IAM::Role"
+    Properties:
+      AssumeRolePolicyDocument:
+          Version: "2012-10-17"
+          Statement:
+            - Effect: "Allow"
+              Action: "sts:AssumeRole"
+              Principal:
+                Service: "codebuild.amazonaws.com"
+            - Effect: "Allow" 
+              Action: "sts:AssumeRole"
+              Principal:
+                Service: "codepipeline.amazonaws.com"
+      ManagedPolicyArns:
+        - "arn:aws:iam::aws:policy/AWSCodeBuildAdminAccess"
+        - "arn:aws:iam::aws:policy/AdministratorAccess"
+  ArtifactStorage:
+    Type: "AWS::S3::Bucket"
+  ArtifactStoragePolicy:
+    Type: "AWS::S3::BucketPolicy"
+    Properties:
+      Bucket: !Ref ArtifactStorage
+      PolicyDocument:
+        Statement:
+          - Action: s3:*
+            Effect: Allow
+            Resource:
+              - !Sub arn:aws:s3:::${ArtifactStorage}
+              - !Sub arn:aws:s3:::${ArtifactStorage}/*
+            Principal:
+              AWS:
+                - !GetAtt PipelineRole.Arn
+  DockerRepo:
+    Type: "AWS::ECR::Repository"
+    Properties:
+      RepositoryPolicyText:
+        Version: "2012-10-17"
+        Statement:
+          - Sid: AllowPushPull
+            Effect: Allow
+            Action:
+              - "ecr:*"
+            Principal:
+              AWS:
+                - !GetAtt PipelineRole.Arn
+  BuildProject:
+    Type: AWS::CodeBuild::Project
+    DependsOn:
+      - PipelineRole
+    Properties:
+      ServiceRole: !GetAtt PipelineRole.Arn
+      Source:
+        Type: CODEPIPELINE
+      Environment:
+        Type: LINUX_CONTAINER
+        ComputeType: BUILD_GENERAL1_SMALL
+        Image: aws/codebuild/docker:1.12.1
+        EnvironmentVariables:
+          - Name: DOCKER_IMAGE_URL
+            Value: !Sub "${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/${DockerRepo}"
+      Artifacts:
+        Type: CODEPIPELINE
+  Pipeline:
+    Type: AWS::CodePipeline::Pipeline
+    DependsOn:
+      - BuildProject
+    Properties:
+      ArtifactStore:
+        Type: "S3"
+        Location: !Ref ArtifactStorage
+      RoleArn: !GetAtt PipelineRole.Arn
+      RestartExecutionOnUpdate: true
+      Stages:
+        - Name: Source
+          Actions:
+          - Name: Source
+            ActionTypeId:
+              Category: Source
+              Provider: GitHub
+              Owner: ThirdParty
+              Version: 1
+            OutputArtifacts:
+              - Name: sourceCode
+            Configuration:
+              Owner: "prowe"
+              Repo: "node-reference"
+              Branch: master
+              OAuthToken: !Ref RepoToken
+        - Name: Build
+          Actions:
+          - Name: Build
+            ActionTypeId:
+              Category: Build
+              Owner: AWS
+              Provider: CodeBuild
+              Version: 1
+            InputArtifacts:
+              - Name: sourceCode
+            Configuration:
+              ProjectName: !Ref BuildProject
+            OutputArtifacts:
+              - Name: buildResults

@@ -1,0 +1,27 @@
+version: 0.2
+env:
+  variables: {}
+phases:
+  pre_build:
+    commands:
+      - export RELEASE_IMAGE_URL="$DOCKER_IMAGE_URL:$CODEBUILD_RESOLVED_SOURCE_VERSION"
+  build:
+    commands:
+      - docker build --tag "$RELEASE_IMAGE_URL" .
+      - docker run -it "$RELEASE_IMAGE_URL" "npm test"
+      - |
+        cat <<EOF > outputProperties.json
+        {
+          "image": "$RELEASE_IMAGE_URL", 
+          "version": "$CODEBUILD_RESOLVED_SOURCE_VERSION"
+        }
+        EOF
+  post_build:
+    commands:
+      - $(aws ecr get-login)
+      - docker push "$RELEASE_IMAGE_URL"
+artifacts:
+  discard-paths: yes
+  files:
+    - "cloudformation.template.yml"
+    - "outputProperties.json"

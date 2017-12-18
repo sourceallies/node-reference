@@ -8,7 +8,6 @@ phases:
   build:
     commands:
       - docker build --tag "$RELEASE_IMAGE_URL" .
-      - docker run "$RELEASE_IMAGE_URL" "npm test"
       - |
         cat <<EOF > outputProperties.json
         {
@@ -16,8 +15,6 @@ phases:
           "version": "$CODEBUILD_RESOLVED_SOURCE_VERSION"
         }
         EOF
-  post_build:
-    commands:
       - $(aws ecr get-login)
       - docker push "$RELEASE_IMAGE_URL"
 artifacts:

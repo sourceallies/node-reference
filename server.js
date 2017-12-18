@@ -13,7 +13,8 @@ app.use(bodyParser.json());
 app.get('/', helloWorld);
 
 app.route('/products')
-    .post(require('./products/postProduct'));
+    .post(require('./products/postProduct'))
+    .get(require('./products/getProductList'));
 
     
 app.listen(3000, () => {

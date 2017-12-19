@@ -109,3 +109,20 @@ Resources:
               ProjectName: !Ref BuildProject
             OutputArtifacts:
               - Name: buildResults
+              - Name: Deploy_DEV
+        - Name: Deploy_DEV
+          Actions:
+          - Name: Deploy
+            RoleArn: !GetAtt PipelineRole.Arn
+            ActionTypeId:
+              Category: Deploy
+              Owner: AWS
+              Provider: CloudFormation
+              Version: '1'
+            InputArtifacts:
+              - Name: buildResults
+            Configuration:
+              StackName: ProductService
+              ActionMode: REPLACE_ON_FAILURE
+              TemplatePath: buildResults::cloudformation.template.yml
+              RoleArn: !GetAtt PipelineRole.Arn

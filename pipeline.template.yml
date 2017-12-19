@@ -109,7 +109,6 @@ Resources:
               ProjectName: !Ref BuildProject
             OutputArtifacts:
               - Name: buildResults
-              - Name: Deploy_DEV
         - Name: Deploy_DEV
           Actions:
           - Name: Deploy

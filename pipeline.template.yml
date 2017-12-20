@@ -129,3 +129,7 @@ Resources:
               ActionMode: REPLACE_ON_FAILURE
               TemplatePath: buildResults::cloudformation.template.yml
               RoleArn: !GetAtt PipelineRole.Arn
+              ParameterOverrides: !Sub |
+                {
+                  "Image": { "Fn::GetParam" : [ "buildResults", "outputProperties.json", "image" ] }
+                }

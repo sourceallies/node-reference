@@ -20,6 +20,10 @@ Resources:
               Action: "sts:AssumeRole"
               Principal:
                 Service: "codepipeline.amazonaws.com"
+            - Effect: "Allow" 
+              Action: "sts:AssumeRole"
+              Principal:
+                Service: "cloudformation.amazonaws.com"
       ManagedPolicyArns:
         - "arn:aws:iam::aws:policy/AWSCodeBuildAdminAccess"
         - "arn:aws:iam::aws:policy/AdministratorAccess"

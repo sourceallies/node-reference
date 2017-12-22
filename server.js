@@ -1,22 +1,17 @@
+const Koa = require('koa');
+const Router = require('koa-router');
+const bodyParser = require('koa-bodyparser');
 
+const app = new Koa();
 
-const express = require('express');
-const app = express();
-const bodyParser = require('body-parser')
+app.use(bodyParser());
+app.use(buildRouter().routes());
 
-function helloWorld(req, res) {
-    res.send("hello world");
+app.listen(3000);
+
+function buildRouter() {
+    const router = new Router();
+    router.get('/products', require('./products/getProductList'));
+    router.post('/products', require('./products/postProduct'));
+    return router;
 }
-
-app.use(bodyParser.json());
-
-app.get('/', helloWorld);
-
-app.route('/products')
-    .post(require('./products/postProduct'))
-    .get(require('./products/getProductList'));
-
-    
-app.listen(3000, () => {
-    console.log("Listening");
-});

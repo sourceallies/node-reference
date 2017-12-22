@@ -11,10 +11,7 @@ describe('products', function () {
                 Items: [{},{}]
             }
 
-            this.res = {
-                json: (obj) => { }
-            };
-            spyOn(this.res, 'json').and.callThrough();
+            this.context = {};
 
             this.awsResult = {
                 promise: () => Promise.resolve(this.response)
@@ -30,13 +27,13 @@ describe('products', function () {
         });
 
         it('should pass the correct TableName to documentClient.scan', async function () {
-            await this.getProductList(this.req, this.res);
+            await this.getProductList(this.context);
             expect(this.documentClient.scan.calls.argsFor(0)[0].TableName).toEqual('Products');
         });
 
-        it('should write the product list to res.json', async function () {
-            await this.getProductList(this.req, this.res);
-            expect(this.res.json).toHaveBeenCalledWith(this.response.Items);
+        it('should return the product list', async function () {
+            let result = await this.getProductList(this.context);
+            expect(result).toEqual(this.response.Items);
         });
     });
 });

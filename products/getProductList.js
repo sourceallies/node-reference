@@ -9,5 +9,5 @@ module.exports = async function getProductList(ctx) {
         TableName: productsTableName
     }).promise();
 
-    return scanOutput.Items;
+    ctx.body = scanOutput.Items;
 };

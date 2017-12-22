@@ -32,8 +32,8 @@ describe('products', function () {
         });
 
         it('should return the product list', async function () {
-            let result = await this.getProductList(this.context);
-            expect(result).toEqual(this.response.Items);
+            await this.getProductList(this.context);
+            expect(this.context.body).toEqual(this.response.Items);
         });
     });
 });

@@ -40,9 +40,9 @@ describe('products', function () {
             expect(this.documentClient.put.calls.argsFor(0)[0].Item).toBe(this.product);
         });
 
-        it('should write the product to res.json', async function () {
-            let result = await this.postProduct(this.context);
-            expect(result).toBe(this.product);
+        it('should set the product as the body', async function () {
+            await this.postProduct(this.context);
+            expect(this.context.body).toBe(this.product);
         });
 
         it('should populate an id on the product', async function () {

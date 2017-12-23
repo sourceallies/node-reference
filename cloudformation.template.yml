@@ -31,6 +31,8 @@ Resources:
       Memory: 512
       # ExecutionRoleArn: String
       NetworkMode: awsvpc
+      RequiresCompatibilities:
+        - FARGATE
       # I think this is the one I want to set
       # TaskRoleArn: String
       ContainerDefinitions:
@@ -44,8 +46,9 @@ Resources:
           LogConfiguration:
             LogDriver: "awslogs"
             Options:
-              "awslogs-group": !Ref LogGroup
-              "awslogs-region": "us-east-1"
+              awslogs-group: !Ref LogGroup
+              awslogs-region: "us-east-1"
+              awslogs-stream-prefix: "ProductService"
   Service: 
     Type: AWS::ECS::Service
 #    DependsOn: ListenerRule

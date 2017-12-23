@@ -9,8 +9,15 @@ app.use(buildRouter().routes());
 
 app.listen(3000);
 
+function healthCheck(ctx) {
+    ctx.body = {
+        message: "healthy"
+    };
+}
+
 function buildRouter() {
     const router = new Router();
+    router.get('/', healthCheck)
     router.get('/products', require('./products/getProductList'));
     router.post('/products', require('./products/postProduct'));
     return router;

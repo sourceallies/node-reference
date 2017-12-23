@@ -27,8 +27,15 @@ Resources:
   TaskRole:
     Type: "AWS::IAM::Role"
     Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: "Allow"
+            Action: "sts:AssumeRole"
+            Principal:
+              Service: "ecs-tasks.amazonaws.com"
       ManagedPolicyArns:
-      #Fix this this is horrible of course
+        #Fix this this is horrible of course
         - "arn:aws:iam::aws:policy/AdministratorAccess"
   TaskDefinition:
     Type: "AWS::ECS::TaskDefinition"

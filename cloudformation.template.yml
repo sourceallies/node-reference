@@ -34,12 +34,11 @@ Resources:
     Properties: 
       Cpu: 256
       Memory: 512
-      # ExecutionRoleArn: String
+      ExecutionRoleArn: !GetAtt TaskRole.Arn
+      TaskRoleArn: !GetAtt TaskRole.Arn
       NetworkMode: awsvpc
       RequiresCompatibilities:
         - FARGATE
-      # I think this is the one I want to set
-      TaskRoleArn: !GetAtt TaskRole.Arn
       ContainerDefinitions:
         - Name: ProductService
           Cpu: 256

@@ -46,3 +46,25 @@ Resources:
             Options:
               "awslogs-group": !Ref LogGroup
               "awslogs-region": "us-east-1"
+  Service: 
+    Type: AWS::ECS::Service
+#    DependsOn: ListenerRule
+    Properties: 
+      Cluster: !Ref ECSCluster
+      LaunchType: FARGATE
+      DesiredCount: 1
+      TaskDefinition: !Ref TaskDefinition
+#      LoadBalancers: 
+#        - ContainerName: !Sub ${ServiceName}-container
+#          ContainerPort: !Ref ContainerPort
+#          TargetGroupArn: !Ref TargetGroup
+      NetworkConfiguration: 
+        AwsvpcConfiguration:
+          AssignPublicIp: ENABLED
+          Subnets:
+            - subnet-5d24b151	
+            - subnet-c5c9fded
+            - subnet-aca64cdb
+            - subnet-2fb7df4a
+            - subnet-62d9cd24
+            - subnet-a8e18192

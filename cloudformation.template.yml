@@ -42,7 +42,7 @@ Resources:
           Essential: true
           Image: !Ref Image
           LogConfiguration:
-            LogDriver: "awslogs",
+            LogDriver: "awslogs"
             Options:
               "awslogs-group": !Ref LogGroup
               "awslogs-region": "us-east-1"

@@ -24,6 +24,11 @@ Resources:
   ECSCluster:
     Type: "AWS::ECS::Cluster"
     Properties: {}
+  TaskRole:
+    Type: "AWS::IAM::Role"
+    Properties:
+      ManagedPolicyArns:
+        - "arn:aws:iam::aws:policy/AdministratorAccess"
   TaskDefinition:
     Type: "AWS::ECS::TaskDefinition"
     Properties: 
@@ -34,7 +39,7 @@ Resources:
       RequiresCompatibilities:
         - FARGATE
       # I think this is the one I want to set
-      # TaskRoleArn: String
+      TaskRoleArn: !GetAtt TaskRole.Arn
       ContainerDefinitions:
         - Name: ProductService
           Cpu: 256

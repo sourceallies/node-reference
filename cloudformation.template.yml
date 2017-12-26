@@ -105,6 +105,7 @@ Resources:
     Type: AWS::ElasticLoadBalancingV2::TargetGroup
     DependsOn: LoadBalancer
     Properties:
+      TargetType: ip
       VpcId: !Ref VpcId
       Protocol: HTTP
       Port: 80

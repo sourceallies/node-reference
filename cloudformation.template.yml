@@ -92,7 +92,6 @@ Resources:
     Properties:
       Scheme: internet-facing
       Subnets: !Ref SubnetIds
-      VpcId: !Ref VpcId
   LBListener:
     Type: AWS::ElasticLoadBalancingV2::Listener
     Properties:
@@ -106,6 +105,7 @@ Resources:
     Type: AWS::ElasticLoadBalancingV2::TargetGroup
     DependsOn: LoadBalancer
     Properties:
+      VpcId: !Ref VpcId
       Protocol: HTTP
       Port: 80
       HealthCheckPath: /

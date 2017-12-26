@@ -115,16 +115,6 @@ Resources:
       HealthCheckTimeoutSeconds: 5
       HealthyThresholdCount: 2
       UnhealthyThresholdCount: 2
-
-#  ListenerRule:
-#    Type: AWS::ElasticLoadBalancingV2::ListenerRule
-#    DependsOn: LBListener
-#    Properties:
-#      Actions:
-#      - Type: forward
-#        TargetGroupArn: !Ref TargetGroup
-#      Conditions:
-#      - Field: path-pattern
-#        Values: ["*"]
-#      ListenerArn: !Ref LBListener
-#      Priority: 1
+Outputs:
+  LoadBalancerDNS:
+    Value: !GetAtt LoadBalancer.DNSName

@@ -4,6 +4,9 @@ Parameters:
   Image:
     Type: String
     Description: Docker image to run
+  SubnetIds:
+    Type: List<AWS::EC2::Subnet::Id>
+    Description: List of subnet Ids to run in
 Resources:
   Database:
     Type: "AWS::DynamoDB::Table"
@@ -67,7 +70,7 @@ Resources:
     Properties: 
       Cluster: !Ref ECSCluster
       LaunchType: FARGATE
-      DesiredCount: 1
+      DesiredCount: 0
       TaskDefinition: !Ref TaskDefinition
 #      LoadBalancers: 
 #        - ContainerName: !Sub ${ServiceName}-container
@@ -76,10 +79,4 @@ Resources:
       NetworkConfiguration: 
         AwsvpcConfiguration:
           AssignPublicIp: ENABLED
-          Subnets:
-            - subnet-5d24b151	
-            - subnet-c5c9fded
-            - subnet-aca64cdb
-            - subnet-2fb7df4a
-            - subnet-62d9cd24
-            - subnet-a8e18192
+          Subnets: !Ref SubnetIds

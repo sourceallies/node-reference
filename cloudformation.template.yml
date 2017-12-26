@@ -69,17 +69,56 @@ Resources:
               awslogs-stream-prefix: "ProductService"
   Service: 
     Type: AWS::ECS::Service
-#    DependsOn: ListenerRule
+    DependsOn: ListenerRule
     Properties: 
       Cluster: !Ref ECSCluster
       LaunchType: FARGATE
       DesiredCount: 1
       TaskDefinition: !Ref TaskDefinition
-#      LoadBalancers: 
-#        - ContainerName: ProductService
-#          ContainerPort: !Ref ContainerPort
-#          TargetGroupArn: !Ref TargetGroup
+      LoadBalancers: 
+        - ContainerName: ProductService
+          ContainerPort: 3000
+          TargetGroupArn: !Ref TargetGroup
       NetworkConfiguration: 
         AwsvpcConfiguration:
           AssignPublicIp: ENABLED
           Subnets: !Ref SubnetIds
+  LoadBalancer:
+    Type: AWS::ElasticLoadBalancingV2::LoadBalancer
+    Properties:
+      Scheme: internet-facing
+      LoadBalancerAttributes:
+      Subnets: !Ref SubnetIds
+  LBListener:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties:
+      DefaultActions:
+      - Type: forward
+        TargetGroupArn: !Ref TargetGroup
+      LoadBalancerArn: !Ref LoadBalancer
+      Port: '80'
+      Protocol: HTTP
+  ListenerRule:
+    Type: AWS::ElasticLoadBalancingV2::ListenerRule
+    DependsOn: LBListener
+    Properties:
+      Actions:
+      - Type: forward
+        TargetGroupArn: !Ref TargetGroup
+      Conditions:
+      - Field: path-pattern
+        Values: [/]
+      ListenerArn: !Ref LBListener
+      Priority: 1
+  TargetGroup:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    DependsOn: ECSALB
+    Properties:
+      HealthCheckIntervalSeconds: 10
+      HealthCheckPath: /
+      HealthCheckProtocol: HTTP
+      HealthCheckTimeoutSeconds: 5
+      HealthyThresholdCount: 2
+      Port: 80
+      Protocol: HTTP
+      UnhealthyThresholdCount: 2

@@ -57,7 +57,7 @@ Resources:
           - Effect: "Allow"
             Action: 
               - logs:*
-            Resource: !Ref LogGroup
+            Resource: !GetAtt LogGroup.Arn
   TaskDefinition:
     Type: "AWS::ECS::TaskDefinition"
     Properties: 

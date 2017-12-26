@@ -60,10 +60,10 @@ Resources:
             Resource: !GetAtt LogGroup.Arn
   TaskDefinition:
     Type: "AWS::ECS::TaskDefinition"
+    DependsOn: !Ref TaskPolicy
     Properties: 
       Cpu: 256
       Memory: 512
-      DependsOn: !Ref TaskPolicy
       ExecutionRoleArn: !GetAtt TaskRole.Arn
       TaskRoleArn: !GetAtt TaskRole.Arn
       NetworkMode: awsvpc

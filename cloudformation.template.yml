@@ -4,6 +4,10 @@ Parameters:
   Image:
     Type: String
     Description: Docker image to run
+  VpcId:
+    Type: AWS::EC2::VPC::Id
+    Description: Id of the VPC
+    Default: vpc-868750e3
   SubnetIds:
     Type: List<AWS::EC2::Subnet::Id>
     Description: List of subnet Ids to run in
@@ -88,6 +92,7 @@ Resources:
     Properties:
       Scheme: internet-facing
       Subnets: !Ref SubnetIds
+      VpcId: !Ref VpcId
   LBListener:
     Type: AWS::ElasticLoadBalancingV2::Listener
     Properties:

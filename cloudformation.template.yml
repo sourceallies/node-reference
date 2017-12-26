@@ -41,14 +41,25 @@ Resources:
             Action: "sts:AssumeRole"
             Principal:
               Service: "ecs-tasks.amazonaws.com"
-      ManagedPolicyArns:
-        #Fix this this is horrible of course
-        - "arn:aws:iam::aws:policy/AdministratorAccess"
+  TaskPolicy:
+    Type: "AWS::IAM::Policy"
+    Properties:
+      PolicyName: !Sub "${AWS::StackName}-TaskPolicy"
+      Roles:
+        - !Ref TaskRole
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement: 
+          - Effect: "Allow"
+            Action: 
+              - dynamodb:*
+            Resource: !Ref ProductsTable
   TaskDefinition:
     Type: "AWS::ECS::TaskDefinition"
     Properties: 
       Cpu: 256
       Memory: 512
+      DependsOn: !Ref TaskPolicy
       ExecutionRoleArn: !GetAtt TaskRole.Arn
       TaskRoleArn: !GetAtt TaskRole.Arn
       NetworkMode: awsvpc
@@ -73,7 +84,6 @@ Resources:
               awslogs-stream-prefix: "ProductService"
   Service: 
     Type: AWS::ECS::Service
-    # DependsOn: ListenerRule
     Properties: 
       Cluster: !Ref ECSCluster
       LaunchType: FARGATE

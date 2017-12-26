@@ -87,7 +87,6 @@ Resources:
     Type: AWS::ElasticLoadBalancingV2::LoadBalancer
     Properties:
       Scheme: internet-facing
-      LoadBalancerAttributes:
       Subnets: !Ref SubnetIds
   LBListener:
     Type: AWS::ElasticLoadBalancingV2::Listener

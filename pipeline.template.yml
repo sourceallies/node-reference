@@ -56,6 +56,16 @@ Resources:
             Principal:
               AWS:
                 - !GetAtt PipelineRole.Arn
+          - Sid: AllowPull
+            Effect: Allow
+            Principal:
+              AWS:
+                - !Sub "arn:aws:iam::${AWS::AccountId}:role/*"
+                - !Sub "arn:aws:iam::${AWS::AccountId}:user/*"
+            Action:
+              - ecr:GetDownloadUrlForLayer
+              - ecr:BatchGetImage
+              - ecr:BatchCheckLayerAvailability
   BuildProject:
     Type: AWS::CodeBuild::Project
     DependsOn:

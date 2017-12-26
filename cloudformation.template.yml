@@ -53,7 +53,7 @@ Resources:
           - Effect: "Allow"
             Action: 
               - dynamodb:*
-            Resource: !Ref ProductsTable
+            Resource: !GetAtt ProductsTable.Arn
           - Effect: "Allow"
             Action: 
               - logs:*

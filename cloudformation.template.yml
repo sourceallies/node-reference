@@ -24,9 +24,6 @@ Resources:
     Type: "AWS::Logs::LogGroup"
     Properties:
       RetentionInDays: 30
-  ECSCluster:
-    Type: "AWS::ECS::Cluster"
-    Properties: {}
   TaskRole:
     Type: "AWS::IAM::Role"
     Properties:
@@ -68,7 +65,6 @@ Resources:
     Type: AWS::ECS::Service
 #    DependsOn: ListenerRule
     Properties: 
-      Cluster: !Ref ECSCluster
       LaunchType: FARGATE
       DesiredCount: 0
       TaskDefinition: !Ref TaskDefinition

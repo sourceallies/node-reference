@@ -61,7 +61,7 @@ Resources:
   TaskDefinition:
     Type: "AWS::ECS::TaskDefinition"
     DependsOn: 
-      - !Ref TaskPolicy
+      - TaskPolicy
     Properties: 
       Cpu: 256
       Memory: 512

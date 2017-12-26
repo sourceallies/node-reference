@@ -54,6 +54,10 @@ Resources:
             Action: 
               - dynamodb:*
             Resource: !Ref ProductsTable
+          - Effect: "Allow"
+            Action: 
+              - logs:*
+            Resource: !Ref LogGroup
   TaskDefinition:
     Type: "AWS::ECS::TaskDefinition"
     Properties: 

@@ -69,7 +69,7 @@ Resources:
               awslogs-stream-prefix: "ProductService"
   Service: 
     Type: AWS::ECS::Service
-    DependsOn: ListenerRule
+    # DependsOn: ListenerRule
     Properties: 
       Cluster: !Ref ECSCluster
       LaunchType: FARGATE
@@ -95,29 +95,30 @@ Resources:
       - Type: forward
         TargetGroupArn: !Ref TargetGroup
       LoadBalancerArn: !Ref LoadBalancer
-      Port: '80'
-      Protocol: HTTP
-  ListenerRule:
-    Type: AWS::ElasticLoadBalancingV2::ListenerRule
-    DependsOn: LBListener
-    Properties:
-      Actions:
-      - Type: forward
-        TargetGroupArn: !Ref TargetGroup
-      Conditions:
-      - Field: path-pattern
-        Values: [/]
-      ListenerArn: !Ref LBListener
-      Priority: 1
-  TargetGroup:
-    Type: AWS::ElasticLoadBalancingV2::TargetGroup
-    DependsOn: ECSALB
-    Properties:
-      HealthCheckIntervalSeconds: 10
-      HealthCheckPath: /
-      HealthCheckProtocol: HTTP
-      HealthCheckTimeoutSeconds: 5
-      HealthyThresholdCount: 2
       Port: 80
       Protocol: HTTP
+  TargetGroup:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    DependsOn: LoadBalancer
+    Properties:
+      Protocol: HTTP
+      Port: 80
+      HealthCheckPath: /
+      HealthCheckProtocol: HTTP
+      HealthCheckIntervalSeconds: 10
+      HealthCheckTimeoutSeconds: 5
+      HealthyThresholdCount: 2
       UnhealthyThresholdCount: 2
+
+#  ListenerRule:
+#    Type: AWS::ElasticLoadBalancingV2::ListenerRule
+#    DependsOn: LBListener
+#    Properties:
+#      Actions:
+#      - Type: forward
+#        TargetGroupArn: !Ref TargetGroup
+#      Conditions:
+#      - Field: path-pattern
+#        Values: ["*"]
+#      ListenerArn: !Ref LBListener
+#      Priority: 1

@@ -1,3 +1,5 @@
+
+const AWSXRay = require('aws-xray-sdk');
 const AWS = require('aws-sdk');
 
 if (!process.env.PRODUCTS_TABLE_NAME) {
@@ -9,4 +11,8 @@ if (!process.env.PRODUCTS_TABLE_NAME) {
     });
 }
 
-module.exports = new AWS.DynamoDB.DocumentClient();
+const dynamoDB = AWSXRay.captureAWSClient(new AWS.DynamoDB());
+
+module.exports = new AWS.DynamoDB.DocumentClient({
+    service: dynamoDB
+});

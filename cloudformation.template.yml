@@ -41,6 +41,8 @@ Resources:
             Action: "sts:AssumeRole"
             Principal:
               Service: "ecs-tasks.amazonaws.com"
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly
   TaskPolicy:
     Type: "AWS::IAM::Policy"
     Properties:

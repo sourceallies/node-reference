@@ -80,8 +80,6 @@ Resources:
               Value: !Ref ProductsTable
             - Name: AWS_XRAY_TRACING_NAME
               Value: ProductService
-            - Name: AWS_XRAY_DAEMON_ADDRESS
-              Value: XRayDaemon
           PortMappings:
             - ContainerPort: 3000
           Essential: true
@@ -94,7 +92,6 @@ Resources:
               awslogs-stream-prefix: ProductService
         - Name: XRayDaemon
           Image: namshi/aws-xray
-          Hostname: XRayDaemon
           PortMappings:
             - ContainerPort: 2000
               Protocol: udp

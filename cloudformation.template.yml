@@ -94,6 +94,7 @@ Resources:
               awslogs-stream-prefix: ProductService
         - Name: XRayDaemon
           Image: namshi/aws-xray
+          Hostname: XRayDaemon
           PortMappings:
             - ContainerPort: 2000
               Protocol: udp
@@ -121,7 +122,6 @@ Resources:
   LoadBalancer:
     Type: AWS::ElasticLoadBalancingV2::LoadBalancer
     Properties:
-      Scheme: internet-facing
       Subnets: !Ref SubnetIds
   LBListener:
     Type: AWS::ElasticLoadBalancingV2::Listener

@@ -84,8 +84,6 @@ Resources:
               Value: ProductService
             - Name: AWS_XRAY_DAEMON_ADDRESS
               Value: XRayDaemon
-          Links:
-            - XRayDaemon
           PortMappings:
             - ContainerPort: 3000
           Essential: true

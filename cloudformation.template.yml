@@ -144,6 +144,9 @@ Resources:
       HealthCheckTimeoutSeconds: 5
       HealthyThresholdCount: 2
       UnhealthyThresholdCount: 2
+      TargetGroupAttributes:
+        - Key:  deregistration_delay.timeout_seconds
+          Value:  30
 Outputs:
   LoadBalancerDNS:
     Value: !GetAtt LoadBalancer.DNSName

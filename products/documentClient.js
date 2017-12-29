@@ -11,8 +11,7 @@ if (!process.env.PRODUCTS_TABLE_NAME) {
     });
 }
 
-const dynamoDB = AWSXRay.captureAWSClient(new AWS.DynamoDB());
+const documentClient = new AWS.DynamoDB.DocumentClient();
+AWSXRay.captureAWSClient(documentClient.service);
 
-module.exports = new AWS.DynamoDB.DocumentClient({
-    service: dynamoDB
-});
+module.exports = documentClient;

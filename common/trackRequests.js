@@ -49,4 +49,6 @@ const koaMW = {
   },
 };
 
-module.exports = function(segmentName){};
+module.exports = function(segmentName){
+  
+};

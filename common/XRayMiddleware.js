@@ -49,4 +49,4 @@ const koaMW = {
   },
 };
 
-module.exports = koaMW;
+module.exports = function(segmentName){};

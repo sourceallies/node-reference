@@ -17,12 +17,13 @@ module.exports = async function postProduct(ctx) {
 
     product.id = shortid.generate();
     console.log('posting product', product);
-    await saveProduct(product);
+    await saveProduct(product, ctx.segment);
     ctx.body = product;
 };
 
-async function saveProduct(product) {
+async function saveProduct(product, segment) {
     return await documentClient.put({
+        Segment: segment,
         TableName: productsTableName,
         Item: product
     }).promise();

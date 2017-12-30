@@ -49,6 +49,38 @@ const koaMW = {
   },
 };
 
-module.exports = function(segmentName){
-  
+// This is not fully tested (hard to test XRay integration)
+module.exports = function(defaultName){
+  if (!defaultName || typeof defaultName !== 'string') {
+      throw new Error('Default segment name was not supplied.  Please provide a string.');
+  }
+
+  AWSXRay.enableManualMode();
+  mwUtils.setDefaultName(defaultName);
+  return trackRequestMiddleware;
 };
+
+async function trackRequestMiddleware(ctx, next) {
+  const amznTraceHeader = mwUtils.processHeaders(ctx);
+  const name = mwUtils.resolveName(ctx.host);
+  ctx.segment = new Segment(name, amznTraceHeader.Root, amznTraceHeader.Parent);
+  ctx.segment.addIncomingRequestData(new IncomingRequestData(ctx.req));
+
+  try {
+    ctx.segment = segment;
+    await next(ctx);
+  } catch(err) {
+    closeSegment(ctx, err);
+    throw err;
+  }
+  closeSegment(ctx);
+}
+
+function closeSegment(ctx, err) {
+  const segment = AWSXRay.resolveSegment(ctx.segment);
+  if(ctx._matchedRoute) {
+    segment.addAnnotation('route', ctx._matchedRoute);
+  }
+  segment.http.close(ctx.res);
+  segment.close(err);
+}

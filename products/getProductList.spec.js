@@ -35,7 +35,7 @@ describe('products', function () {
             const seg = {};
             this.context.segment = seg;
             await this.getProductList(this.context);
-            expect(this.documentClient.put.calls.argsFor(0)[0].Segment).toBe(seg);
+            expect(this.documentClient.scan.calls.argsFor(0)[0].Segment).toBe(seg);
         });
 
         it('should return the product list', async function () {

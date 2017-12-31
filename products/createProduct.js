@@ -16,7 +16,6 @@ module.exports = async function postProduct(ctx) {
     }
 
     product.id = shortid.generate();
-    console.log('posting product', product);
     await saveProduct(product, ctx.segment);
     ctx.body = product;
 };

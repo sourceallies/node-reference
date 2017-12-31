@@ -15,29 +15,51 @@ module.exports = function (defaultName) {
     mwUtils.setDefaultName(defaultName);
 
 
-    const segmentsByAsyncId = {};
 
-    function init(asyncId, type, triggerAsyncId, resource) {
-    }
-    function before(asyncId) {
-        let segment = segmentsByAsyncId[asyncId];
-        fs.writeSync(1, `before: ${asyncId} ${segment}\n`);
-        if(segment) {
-            AWSXRay.setSegment(segment);
+    /*
+        function init(asyncId, type, triggerAsyncId, resource) {
         }
-    }
-    function after(asyncId) {
-    }
-    function destroy(asyncId) {
-    }
+        function before(asyncId) {
+            let segment = segmentsByAsyncId[asyncId];
+            fs.writeSync(1, `before: ${asyncId} ${segment}\n`);
+            if(segment) {
+                AWSXRay.setSegment(segment);
+            }
+        }
+        function after(asyncId) {
+        }
+        function destroy(asyncId) {
+        }
+    
+        //const asyncHook = async_hooks.createHook({
+          //  init,
+         //   before,
+           // after,
+           // destroy
+        //});
+        //asyncHook.enable();
+        */
 
-    const asyncHook = async_hooks.createHook({
-      //  init,
-        before,
-       // after,
-       // destroy
-    });
-    asyncHook.enable();
+    const contextUtils = require('aws-xray-sdk-core/lib/context_utils');
+    const segmentsByAsyncId = {};
+    AWSXRay.setSegment = contextUtils.setSegment = function (segment) {
+        let asyncId = async_hooks.executionAsyncId();
+        AWSXRay.getLogger().debug(`Setting segment for asyncId ${asyncId} to ${segment}`);
+        if (segment) {
+            segmentsByAsyncId[asyncId] = segment;
+        } else {
+            delete segmentsByAsyncId[asyncId];
+        }
+    };
+    AWSXRay.getSegment = contextUtils.getSegment = function () {
+        let asyncId = async_hooks.executionAsyncId();
+        let segment = segmentsByAsyncId[asyncId];
+        AWSXRay.getLogger().debug(`Returning segment ${segment} for asyncId ${asyncId}`);
+        if (!segment) {
+            throw new Error(`No segment found for async id ${asyncId}`);
+        }
+        return segment;
+    };
 
     function closeSegment(ctx, err) {
         const segment = AWSXRay.resolveSegment(ctx.segment);
@@ -46,6 +68,7 @@ module.exports = function (defaultName) {
         }
         segment.http.close(ctx.res);
         segment.close(err);
+        AWSXRay.setSegment(null);
     }
 
     async function trackRequestMiddleware(ctx, next) {
@@ -55,8 +78,6 @@ module.exports = function (defaultName) {
         ctx.segment.addIncomingRequestData(new IncomingRequestData(ctx.req));
 
         AWSXRay.setSegment(ctx.segment);
-        let asyncId = async_hooks.executionAsyncId();
-        segmentsByAsyncId[asyncId] = ctx.segment;
         try {
             await next(ctx);
         } catch (err) {

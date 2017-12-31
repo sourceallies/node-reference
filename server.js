@@ -25,5 +25,6 @@ function buildRouter() {
     router.get('/products', require('./products/listProducts'));
     router.post('/products', require('./products/createProduct'));
     router.get('/products/:id', require('./products/getProductById'));
+    router.delete('/products/:id', require('./products/deleteProduct'));
     return router;
 }

@@ -22,7 +22,7 @@ function healthCheck(ctx) {
 function buildRouter() {
     const router = new Router();
     router.get('/', healthCheck)
-    router.get('/products', require('./products/getProductList'));
-    router.post('/products', require('./products/postProduct'));
+    router.get('/products', require('./products/listProducts'));
+    router.post('/products', require('./products/createProduct'));
     return router;
 }

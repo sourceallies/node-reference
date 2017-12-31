@@ -3,7 +3,7 @@
 const proxyquire = require('proxyquire');
 
 describe('products', function () {
-    describe('postProduct', function () {
+    describe('createProduct', function () {
 
         beforeEach(function () {
             this.product = {
@@ -30,57 +30,57 @@ describe('products', function () {
             };
             spyOn(this.documentClient, 'put').and.callThrough();
 
-            this.postProduct = proxyquire('./postProduct', {
+            this.createProduct = proxyquire('./createProduct', {
                 "./documentClient": this.documentClient,
                 './productValidator': this.productValidator,
             });
         });
 
         it('should pass the correct TableName to documentClient.put', async function () {
-            await this.postProduct(this.context);
+            await this.createProduct(this.context);
             expect(this.documentClient.put.calls.argsFor(0)[0].TableName).toEqual('Products');
         });
 
         it('should pass the current segment to documentClient.put', async function() {
             const seg = {};
             this.context.segment = seg;
-            await this.postProduct(this.context);
+            await this.createProduct(this.context);
             expect(this.documentClient.put.calls.argsFor(0)[0].Segment).toBe(seg);
         });
 
         it('should pass the postedProduct to documentClient.put', async function () {
-            await this.postProduct(this.context);
+            await this.createProduct(this.context);
             expect(this.documentClient.put.calls.argsFor(0)[0].Item).toBe(this.product);
         });
 
         it('should set the product as the body', async function () {
-            await this.postProduct(this.context);
+            await this.createProduct(this.context);
             expect(this.context.body).toBe(this.product);
         });
 
         it('should populate an id on the product', async function () {
-            await this.postProduct(this.context);
+            await this.createProduct(this.context);
             expect(this.documentClient.put.calls.argsFor(0)[0].Item.id).toBeDefined();
         });
 
         it('should return validation errors as the body if validation fails', async function(){
             let errors = {"name": []};
             this.productValidator.validate.and.returnValue(errors);
-            await this.postProduct(this.context);
+            await this.createProduct(this.context);
             expect(this.context.body).toBe(errors);
         });
 
         it('should set status to 400 if validation fails', async function(){
             let errors = {"name": []};
             this.productValidator.validate.and.returnValue(errors);
-            await this.postProduct(this.context);
+            await this.createProduct(this.context);
             expect(this.context.status).toEqual(400);
         });
 
         it('should not save the product if validation fails', async function(){
             let errors = {"name": []};
             this.productValidator.validate.and.returnValue(errors);
-            await this.postProduct(this.context);
+            await this.createProduct(this.context);
             expect(this.documentClient.put).not.toHaveBeenCalled();
         });
     });

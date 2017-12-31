@@ -67,7 +67,6 @@ async function trackRequestMiddleware(ctx, next) {
   ctx.segment.addIncomingRequestData(new IncomingRequestData(ctx.req));
 
   try {
-    ctx.segment = segment;
     await next(ctx);
   } catch(err) {
     closeSegment(ctx, err);

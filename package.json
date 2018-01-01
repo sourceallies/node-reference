@@ -21,8 +21,10 @@
   "dependencies": {
     "aws-sdk": "^2.167.0",
     "aws-xray-sdk": "^1.1.6",
+    "jwks-rsa": "^1.2.1",
     "koa": "^2.4.1",
     "koa-bodyparser": "^4.2.0",
+    "koa-jwt": "^3.3.0",
     "koa-router": "^7.3.0",
     "shortid": "^2.2.8",
     "validate.js": "^0.12.0"

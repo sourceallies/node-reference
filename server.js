@@ -39,9 +39,7 @@ function setupAuthentication() {
     return jwt({
         secret: jwksRsa.koaJwtSecret({
             cache: true,
-            rateLimit: true,
-            jwksRequestsPerMinute: 2,
-            jwksUri: 'https://www.googleapis.com/oauth2/v3/certs'
+            jwksUri: 'https://cognito-idp.us-east-1.amazonaws.com/us-east-1_xi3tvroaZ/.well-known/jwks.json'
         }),
         algorithms: ['RS256']
     });

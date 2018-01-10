@@ -6,7 +6,7 @@ const constraints = {
     name: {
         presence: true,
         format: {
-            pattern: /\S+/,
+            pattern: /^(?!\s*$).+/,
             message: "can't be blank"
         }
     }

@@ -36,6 +36,12 @@ describe('products', function () {
                 const result = this.productValidator.validate(this.validProduct);
                 expect(result.name).toContain("Name can't be blank");
             });
+
+            it('should return valid if name has a space', function() {
+                this.validProduct.name = 'test product';
+                const result = this.productValidator.validate(this.validProduct);
+                expect(result).not.toBeDefined();
+            });
         });
     });
 });

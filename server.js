@@ -1,20 +1,25 @@
-const Koa = require('koa');
-const Router = require('koa-router');
-const bodyParser = require('koa-bodyparser');
 
 process.env.AWS_XRAY_DEBUG_MODE = true;
 process.env.DEBUG = 'jwks';
 
-const trackRequests = require('./common/trackRequests');
+const Hapi = require('hapi');
 
-const app = new Koa();
+const server = Hapi.server({ 
+    port: 3000
+});
 
-app.use(trackRequests('ProductService-localhost'));
-app.use(setupAuthentication());
-app.use(bodyParser());
-app.use(buildRouter().routes());
+const listProducts = require('./products/listProducts');
+console.log(listProducts);
+server.route(listProducts);
 
-app.listen(3000);
+// const trackRequests = require('./common/trackRequests');
+
+//app.use(trackRequests('ProductService-localhost'));
+//app.use(setupAuthentication());
+//app.use(bodyParser());
+//app.use(buildRouter().routes());
+
+server.start();
 
 function healthCheck(ctx) {
     ctx.body = {

@@ -3,11 +3,17 @@
 const documentClient = require('./documentClient');
 const productsTableName = process.env.PRODUCTS_TABLE_NAME || 'Products';
 
-module.exports = async function getProductList(ctx) {
+module.exports = {
+    method: 'GET',
+    path: '/products',
+    handler: getProductList
+};
+
+async function getProductList(request, h) {
     const scanOutput = await documentClient.scan({
-        Segment: ctx.segment,
+      //  Segment: ctx.segment,
         TableName: productsTableName
     }).promise();
 
-    ctx.body = scanOutput.Items;
+    return h.response(scanOutput.Items);
 };

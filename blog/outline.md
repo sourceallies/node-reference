@@ -73,9 +73,57 @@ function buildRouter() {
 
 We can add additional routes to this file as needed and it provides an easy one-stop-shop place for future developers to find out what code is executing for a given URL.
 
-Congratulations, we now have a very simple NodeJS api running locally. Remember to commit your changes.
+Congratulations, we now have a very simple NodeJS api running locally. You should be able to make a request to http://localhost:3000/hello and see the JSON response. Remember to commit your changes.
 
 ## Dockertize 
+
+Now that we have a simple application running locally we need to figure out a way to package and deploy it to other machines (i.e. Development and Production). We could install NodeJS on a machine and copy the code there. But, we would have to make sure it was the right version of NodeJS. We would have to make sure the packages we depend on (ex. Koa) were installed. And, we would have to modify these things when we upgrade them. This process can be error-prone and time consuming.
+
+Java partially solved this problem by creating a WAR. This was a zip file with a special directory structure that stored the application code as well as dependencies. [Docker](https://www.docker.com) takes this idea further to package up an entire "container" or lightweight virtual machine into a single item that can be pushed to a repository. This allows us confidence not only that deployments to servers are consistent and reliable but also that other developers can easily run our application locally.
+
+Start by creating a file named `Dockerfile` in the root of the project with these contents:
+```Dockerfile
+# Start from this image on https://hub.docker.com (the public docker repo)
+# This gives us a known starting point to configure from for each build
+FROM node:9.2.1-alpine
+
+# Let docker know that our app is listening on port 3000 when it runs
+EXPOSE 3000
+
+# This just sets the current directory so we don't have to put '/app' everywhere
+WORKDIR /app
+
+# copy these files from our local workspace into the container (they will end up in /app)
+COPY package*.json ./
+
+# install npm packages. This is exactly the same as running it on our local workstation but is running inside the container so will install packages there.
+RUN npm install
+
+# Copy everything else (i.e. Code) into the container from our local workspace
+COPY . .
+
+# set the startup command to npm start so when our container runs we start up the server
+# this is way easier then configuring some sort of system daemon
+CMD [ "npm", "start" ]
+```
+
+We don't want to copy in the `node_modules` from our workstation since it is going to be installed within the container. To prevent the `COPY . .` command from picking it up, create a `.dockerignore` file with this line:
+```
+node_modules
+```
+
+That's all there is to it. Run this command to build the image:
+```Bash
+docker build --tag node-ref .
+```
+
+The image can be started locally by running:
+```Bash
+docker run --publish 3000:3000 node-ref
+```
+
+You should be able to make a request to http://localhost:3000/hello and see the same response as earlier.
+
 ## Cloudformation intro
 ## Continuous building via code pipeline
 ## Docker repo

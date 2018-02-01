@@ -1,4 +1,4 @@
-1. Intro
+## Intro
 
 ## Hello koa 
 The first order of business is to deploy what we could call a "Canary". This is an inital version of the application that lacks business functionality but can be deployed all the way to production to test the build process, deployment pipeline, access, security setup and monitoring. By focusing on these technical tasks before building functionality, troubleshooting issues when they arrive will be simpler. It also removes the need to "fit in" these best practices later in the project.
@@ -71,26 +71,28 @@ function buildRouter() {
 }
 ```
 
+We can add additional routes to this file as needed and it provides an easy one-stop-shop place for future developers to find out what code is executing for a given URL.
 
+Congratulations, we now have a very simple NodeJS api running locally. Remember to commit your changes.
 
-3. Dockertize 
-4. Cloudformation intro
-5. Continuous building via code pipeline
-6. Docker repo
-7. Fargate deployment
-8. Add an alb 
-9. SSL/dns
-10. Cognito setup
-11. Adding authentication
-12. Add unit testing
-13. Add model validation
-14. Add DynamoDB
-15. Create put test/endpoint
-16. Add e2e smoke test
-17. Tie smoke test to deploy
-18. Add xray
-19. Add listing
-20. Add get by Id 
-21. Add delete
-22. Add patch
-23. Add change event/topic
+## Dockertize 
+## Cloudformation intro
+## Continuous building via code pipeline
+## Docker repo
+## Fargate deployment
+## Add an alb 
+## SSL/dns
+## Cognito setup
+## Adding authentication
+## Add unit testing
+## Add model validation
+## Add DynamoDB
+## Create put test/endpoint
+## Add e2e smoke test
+## Tie smoke test to deploy
+## Add xray
+## Add listing
+## Add get by Id 
+## Add delete
+## Add patch
+## Add change event/topic

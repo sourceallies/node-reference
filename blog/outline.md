@@ -125,7 +125,175 @@ docker run --publish 3000:3000 node-ref
 You should be able to make a request to http://localhost:3000/hello and see the same response as earlier.
 
 ## Cloudformation intro
+
+In order to manage the infrastructure and deployments we will be leveraging [Cloudformation](https://aws.amazon.com/cloudformation/). By using this tool we can declaratively what components our infrastructure requires and how they relate to each other. I highly recommend using YAML for all templates for these reasons:
+- Template functions (ex. Ref and GetAtt) are much easier to read
+- Comments are supported. Sometimes a parameter has to be set to a specific number or magic value and can be useful to explain to those making future changes why.
+- Multiline values are easy to specify
+- It is a lot more concise. Templates can become quite lengthy.
+
 ## Continuous building via code pipeline
+
+Not only are we going to manage our application environments with Cloudformation but also our deployment pipeline. [Code Pipeline](https://aws.amazon.com/codepipeline/) (Not to be confused with Code Deploy) is the Continuious Integration and Continuious Deployment offering from AWS. There are a lot of options to handle this task but I prefer code pipeline because all it requires is an AWS account to get started so we don't have to worry about integrating other tools.
+
+Start by creating a simple `pipeline.template.yml` file with the following content:
+
+```yml
+AWSTemplateFormatVersion: "2010-09-09"
+Description: Pipeline for Product Service
+Parameters:
+  RepoToken:
+    Type: String
+    NoEcho: true
+    Description: OAuth Token for the github repository
+Resources:
+  ArtifactStorage:
+    Type: "AWS::S3::Bucket"
+```
+
+Before executing the above template, log into your [GitHub](https://github.com) account and go to Settings -> Developer Settings -> Personal Access Tokens and create a personal access token. Save this token in a safe place for now (Don't check it into verison control). We will need it in the next step.
+
+Deploy the stack by running the following command, substituting your Github token:
+
+```Bash
+aws cloudformation deploy \
+    --stack-name=ProductService-Pipeline \
+    --template-file=pipeline.template.yml \
+    --parameter-overrides \
+        RepoToken='repo-token'
+```
+
+It isn't much yet (Just an S3 bucket). I like to deploy cloudformation templates with minimal changes between deploys so that a failed deploy will only rollback a small change and identifying the source of the failure is easier. We need an S3 bucket to store "artifacts". Specifically the source code and outputs of the builds.
+
+Next, we will add a Role to the template. We will configure Code Pipeline, Code Build and Cloudformation to assume this role when they execute. Because of this, we need to ensure the role as the appropriate permissions to build and deploy our project as well as grant these services the ability to assume the role. If we had specific compliance needs or multi account needs we could specify multiple roles or even specify role ARNs from a different account.
+
+Add this under Resources:
+```yml
+PipelineRole:
+  Type: "AWS::IAM::Role"
+  Properties:
+    AssumeRolePolicyDocument:
+      Version: "2012-10-17"
+      Statement:
+        - Effect: "Allow"
+          Action: "sts:AssumeRole"
+          Principal:
+            Service: "codebuild.amazonaws.com"
+        - Effect: "Allow" 
+          Action: "sts:AssumeRole"
+          Principal:
+            Service: "codepipeline.amazonaws.com"
+        - Effect: "Allow" 
+          Action: "sts:AssumeRole"
+          Principal:
+            Service: "cloudformation.amazonaws.com"
+    ManagedPolicyArns:
+      - "arn:aws:iam::aws:policy/AWSCodeBuildAdminAccess"
+      - "arn:aws:iam::aws:policy/AdministratorAccess"
+```
+
+Next we can update our stack by running our deploy command again. This time we won't sepecify the RepoToken parameter so cloudformation uses the previous value and we need to pass CAPABILITY_IAM so we are allowed to create a Role:
+
+```Bash
+aws cloudformation deploy \
+    --stack-name=ProductService-Pipeline \
+    --template-file=pipeline.template.yml \
+    --capabilities CAPABILITY_IAM
+```
+
+From this point on we can use the above command to update our pipeline stack as needed.
+
+We need a place to store our Docker images. We probably don't want to push them to the public Docker Hub and since we're trying to keep things simple we can create an ECR Repository by putting the following in our template and redeploying:
+
+```yaml
+DockerRepo:
+  Type: "AWS::ECR::Repository"
+  Properties:
+    RepositoryPolicyText:
+      Version: "2012-10-17"
+      Statement:
+        - Sid: AllowPushPull
+          Effect: Allow
+          Action:
+            - "ecr:*"
+          Principal:
+            AWS:
+              - !GetAtt PipelineRole.Arn
+```
+
+Now we can start working on the actual build and deploy process (a.k.a "Pipeline"). Add the following resources to the template:
+
+```yaml
+# This resource sets up the build. In general, all it does is run arbitrary shell commands inside of a docker 
+# container
+BuildProject:
+  Type: AWS::CodeBuild::Project
+  Properties:
+    #This is the role that the build will execute as. If your build needs to pull artifacts from S3 or reach out of its container for any reason make sure this role has the permissions to do so.
+    ServiceRole: !GetAtt PipelineRole.Arn 
+    Source:
+      #Where our sourcecode will come from (This special keyword says that CodePipeline will provide it)
+      Type: CODEPIPELINE
+    Environment:
+      #This specifies what docker image and how much resources to give it to run the build.
+      Type: LINUX_CONTAINER
+      ComputeType: BUILD_GENERAL1_SMALL
+      Image: aws/codebuild/docker:1.12.1
+      EnvironmentVariables:
+        #We can put anything we want here and these will be set as environment variables when the build runs. 
+        #We're leveraging this to point to the Docker image repository we created earlier.
+        - Name: DOCKER_IMAGE_URL
+          Value: !Sub "${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/${DockerRepo}"
+    Artifacts:
+      #Send any output back to code pipeline
+      Type: CODEPIPELINE
+Pipeline:
+  #This is the "Pipeline" or order flow of execution.
+  Type: AWS::CodePipeline::Pipeline
+  DependsOn:
+    - BuildProject
+  Properties:
+    ArtifactStore:
+      Type: "S3"
+      Location: !Ref ArtifactStorage
+    RoleArn: !GetAtt PipelineRole.Arn
+    RestartExecutionOnUpdate: true
+    Stages: 
+        #The first step triggers with changes in Github
+      - Name: Source
+        Actions:
+        - Name: Source
+          ActionTypeId:
+            Category: Source
+            Provider: GitHub
+            Owner: ThirdParty
+            Version: 1
+          OutputArtifacts:
+            - Name: sourceCode
+          Configuration:
+            Owner: "prowe" #Update this with your github username
+            Repo: "node-reference" #The repository to checkout
+            Branch: master
+            OAuthToken: !Ref RepoToken
+        #Step two is to build the project using our configured CodeBuild project above.
+      - Name: Build
+        Actions:
+        - Name: Build
+          ActionTypeId:
+            Category: Build
+            Owner: AWS
+            Provider: CodeBuild
+            Version: 1
+          InputArtifacts:
+            - Name: sourceCode
+          Configuration:
+            ProjectName: !Ref BuildProject
+          OutputArtifacts:
+            - Name: buildResults
+```
+
+Execute a stack update and you should see a build kick off in the CodePipeline console and fail at the build stage because it can't find a `buildspec.yml` file.
+
 ## Docker repo
 ## Fargate deployment
 ## Add an alb 

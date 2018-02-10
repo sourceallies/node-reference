@@ -151,7 +151,7 @@ Resources:
     Type: "AWS::S3::Bucket"
 ```
 
-Before executing the above template, log into your [GitHub](https://github.com) account and go to Settings -> Developer Settings -> Personal Access Tokens and create a personal access token. Save this token in a safe place for now (Don't check it into verison control). We will need it in the next step.
+Before executing the above template, log into your [GitHub](https://github.com) account and go to Settings -> Developer Settings -> Personal Access Tokens and create a personal access token. You will need to check all the "Repo" and "admin:Repo" scopes. Save this token in a safe place for now (Don't check it into verison control). We will need it in the next step.
 
 Deploy the stack by running the following command, substituting your Github token:
 
@@ -294,10 +294,134 @@ Pipeline:
 
 Execute a stack update and you should see a build kick off in the CodePipeline console and fail at the build stage because it can't find a `buildspec.yml` file.
 
-## Docker repo
+By default (AWS Code Build)[https://aws.amazon.com/codebuild/] looks in the root of the repository for this file. Our version of this file is pretty simple since most of th heavy lifting will be done by Docker. Create a `buildspec.yml` file with these contents:
+
+```YAML
+version: 0.2
+env:
+  variables: {}
+phases:
+  pre_build:
+    commands:
+      - export RELEASE_IMAGE_URL="$DOCKER_IMAGE_URL:$CODEBUILD_RESOLVED_SOURCE_VERSION"
+  build:
+    commands:
+      - docker build --tag "$RELEASE_IMAGE_URL" .
+      - |
+        cat <<EOF > outputProperties.json
+        {
+          "image": "$RELEASE_IMAGE_URL", 
+          "version": "$CODEBUILD_RESOLVED_SOURCE_VERSION"
+        }
+        EOF
+      - $(aws ecr get-login)
+      - docker push "$RELEASE_IMAGE_URL"
+artifacts:
+  discard-paths: yes
+  files:
+    - "cloudformation.template.yml"
+    - "outputProperties.json"
+```
+
+These are simply shell scripts that are executed in order. The first step (in pre_build) is to calculate a Docker image tag that we will push to specific to this build. It is important that we create a unique image for each build so that the deployment of a version will deploy the code built for that version and not simply the last build to execute. the "DOCKER_IMAGE_URL" variable was configured by our cloudformation template and the "CODEBUILD_RESOLVED_SOURCE_VERSION" is a built in variable populated by Code build.
+
+Next we use Docker to build our image. We then create a json file with the URL to the image. We have to have some way to pass the image URL into the Cloudformation template that executes the deployment without it knowing the version ahead of time. To do this we create a properties file and publish it as a build artifact. The artifacts section is a list of files that get copied forward and can be referenced by later stages in our pipeline (i.e. the deployments to Dev and Prod).
+
+Check in the `buildspec.yml` file and wait for a build to kick off. If all works well you should have a new docker image in your docker repo and a successful build.
+
 ## Fargate deployment
+
+With an automated build process underway, it is now time to switch focus to the application's runtime environments. We will be creating two: Development (aka. Dev) and Production (aka. Prod). The same process can be extended to any number of environments. However, consider wether your project needs more than two environments. Talk with your team about what the definition and use-cases of the various environments are. Are you going to do all demos in a specific environment? Do you have business users that want the ability to "play around" in an environment that is not production but also not under active development? New environments can always be added later, but extra environments cost extra money now.
+
+The runtime environment for our Docker image is going to be the (Elastic Container Service)[https://aws.amazon.com/ecs/]. More specifically, the (Fargate)[https://aws.amazon.com/fargate/] configuration. While marketed as a separate product, Fargate is really just a couple of extra configuration values given to an <abbr title="Elastic Container Service">ECS</abbr> Service and Task.
+
+Before the introduction of Fargate there were three main options to run a "serverless" system on AWS. The first was Elastic Beanstalk. This was a fairly heavyweight service that creates virtual machines for each application under the covers and manages them for you. It reduced the burden of maintaining servers but only partially and didn't address the cost. Second, Elastic Container Service is a managed Docker cluster that allows the deploying of custom Docker images to a pool of virtual machines. This brings with it the advantages of extreamly consistent deployments (due to Docker's nature), as well as reduced cost (because multiple applications can share same VM). The user (i.e. us) still has to manage a pool of virtual machines to host these Docker containers. AWS Lambda is a mechanism that allows for a fully "serverless" deployment. A snippet of code (generally doing one small task) is uploaded to AWS and hooked into an event. When the event occurs (a message on a queue or a HTTP request is received) AWS provisions capacity on a pool of VMs managed by them and executes the provided code. This is extreamly attractive because there are no servers to manage and we are only charged when our service is actually executing (by the memory and time consumed). This model works really well in response to asyncronious events like messaging or a schedule but has some serious downsides when reacting to latentcy sensitive HTTP events along with several other drawbacks:
+
+  - The languages and versions of those languages supported is dictated by AWS and on AWS's schedule. Want to use the newest version of NodeJS? Too bad, you'll have to wait until Lambda supports it. Want to deploy a Rust application? Too bad, Lambda doesn't support it. This may be fine for small, one-off events (Like a nightly job that just needs to hit an API) but a larger and more complicated code base (Like a non-trivial production service) these restrictions may not be acceptable.
+  - Your code is not always runing (this is what makes it so cheap). Because of this, the first request to hit it will cause the Lambda to need to be "cold-started". This is the downloading, provisioning and starting of the code. Once done, the Lambda will stay "hot" for as long as it is continuiously receiving requests but as soon as those requests die off for a few minutes, AWS will evict the code to make room for other people's applications. This "cold-start" time is anywhere from 3-10seconds and because of this an SLA requirement of having subsecond API calls is simply impossible to ensure.
+  - Configuration sprawl is also a concern. A simple hello-world app may only have one or two Lambda events and therefore only require a couple dozen lines of Cloudformation configuration to hook them together. As the application grows the amount of configuration needed to be managed grows in lockstep with it. Every HTTP route, and every HTTP method for each of those HTTP routes is a separate Lambda declaration as well as a separate API Gateway resource/method configuration to hook up that Lambda. All of this adds up to a lot of configuration that needs to be exactly correct in order for the application to deploy and is almost impossible to validate locally.
+  - There is no exposed lifecycle for a Lambda. There is no good way to do something "on-start" and to keep state between requests. Generally, microservices are stateless, however, mature applications still often have the need to maintain a cache of data or to download or compile data on startup (For example, spinning up Spring in the Java world or Entity Framework using reflection to pre-compute SQL statements in the .Net world).
+  - Lambdas do not have access to the raw HTTP request. They are receiving "Events" from API Gateway. These events are not a pipe back into the TCP connection with the client but rather an encapsulated request. This is fine for small JSON payloads both ways but often there is a need (even if rarely) to either stream data back to the client (scanning a DB table and converting to CSV for an "Export" functionality) or the ability to accept multi-part binary content in an upload from the client.
+
+All of the above limitations are navigable but require a lot of extra complexity and work arounds that add to the risk of the application and make it harder to maintain and evolve. Fargate solves these problems for us. It allow us to deploy a Docker container of our choosing (which means we can run any version of anything that runs on Linux) on a pool of VMs that are managed by AWS (so we don't have to worry about capcity planning and patching). The containers are run on our schedule (ie. around the clock) so there is no cold-start time. The containers also just handle a normal Linux process so we can do work "on-start" or store files locally on disk. We can run the application locally exactly like in AWS. And, because they receive HTTP traffic (or raw TCP if you prefer), we can leverge the entire HTTP feature set (streams, websockets, HTTP/2 etc) as well as keep routing configuration encapsulated closer to the code that is actually handling that route.
+
+The main downside to all of this is simply cost. We have to pay to run the container all the time. While this may be significant if there are many environments that need multi gigabyte containers, our NodeJS app can happily run on the min specs at a cost of about $12 per month per environment.
+
+The first step in this process is to create a cloudformation template with an ECS cluster in it. This cluster will not contain any dedicated VMs but we still need it as a container to reference. Create a `cloudformation.template.yml` file in the root of the repository with this content:
+
+```YAML
+AWSTemplateFormatVersion: "2010-09-09"
+Description: Product Service
+Parameters:
+  Image:
+    Type: String
+    Description: Docker image to run
+Resources:
+  ECSCluster:
+    Type: "AWS::ECS::Cluster"
+    Properties: {}
+```
+
+Now add the following Stages to the `pipeline.template.yml` file within the pipeline at the end. These will deploy our environments in quick succession:
+
+```YAML
+- Name: Deploy_DEV
+  Actions:
+  - Name: Deploy
+    RoleArn: !GetAtt PipelineRole.Arn
+    ActionTypeId:
+      Category: Deploy
+      Owner: AWS
+      Provider: CloudFormation
+      Version: '1'
+    InputArtifacts:
+      - Name: buildResults
+    Configuration:
+      #this is the name of the stack
+      StackName: ProductService-DEV 
+      #becuase this is dev, if the deploy fails on the first create, just destroy it rather than getting stuck in CREATE_FAILED state
+      ActionMode: REPLACE_ON_FAILURE 
+      #this special syntax represents the file we put in our "artifacts" section of the buildspec.yml
+      TemplatePath: buildResults::cloudformation.template.yml
+      RoleArn: !GetAtt PipelineRole.Arn
+      Capabilities: CAPABILITY_IAM
+      #Because the image URL is not static between builds, we need to inject it here so that it can change each build
+      #this special syntax looks up the value we placed in the outputProperties.json file and passes it to our template
+      #Do not put secret values here as they are visible in the code pipeline GUI
+      ParameterOverrides: !Sub |
+        {
+          "Image": { "Fn::GetParam" : [ "buildResults", "outputProperties.json", "image" ] }
+        }
+  #This is the same as the stage above except the stack name is different and the ActionMode is different
+- Name: Deploy_PROD
+  Actions:
+  - Name: Deploy
+    RoleArn: !GetAtt PipelineRole.Arn
+    ActionTypeId:
+      Category: Deploy
+      Owner: AWS
+      Provider: CloudFormation
+      Version: '1'
+    InputArtifacts:
+      - Name: buildResults
+    Configuration:
+      StackName: ProductService-PROD 
+      #Create or update the stack, but don't delete it if it fails
+      ActionMode: CREATE_UPDATE 
+      TemplatePath: buildResults::cloudformation.template.yml
+      RoleArn: !GetAtt PipelineRole.Arn
+      Capabilities: CAPABILITY_IAM
+      ParameterOverrides: !Sub |
+        {
+          "Image": { "Fn::GetParam" : [ "buildResults", "outputProperties.json", "image" ] }
+        }
+```
+
+Check in the cloudformation.template.yml file and then update the pipeline stack and you sould see two new stacks get created and the pipeline is now four stages long (You may need to refresh). If you update the stack before checking in the template you will probably see a failure in the pipline that it can not find the template file. We now have a continuious delivery pipeline in place that will ensure that infrastructure changes are kept consistent between source control, development and production.
+
+
 ## Add an alb 
-## SSL/dns
+## SSL/dns/force HTTPS
 ## Cognito setup
 ## Adding authentication
 ## Add unit testing

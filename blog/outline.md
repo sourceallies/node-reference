@@ -75,6 +75,52 @@ We can add additional routes to this file as needed and it provides an easy one-
 
 Congratulations, we now have a very simple NodeJS api running locally. You should be able to make a request to http://localhost:3000/hello and see the JSON response. Remember to commit your changes.
 
+## Unit Testing
+
+We plan on using [Test Driven Development](https://en.wikipedia.org/wiki/Test-driven_development) so we need to set up some sort of unit testing framework. For this task I'm turning to [Jasmine](https://jasmine.github.io). Mocha/Chai/Sinon and Jest are also popular options. They are all similar but the thing that I like about Jasmine is that it includes the runner, an assertion library and a mocking framework all in one.
+
+Let's start by installing it by running:
+```Bash
+npm install --save-dev jasmine
+```
+
+Now create a `canary.spec.js` file with the following content:
+```Javascript
+describe('Canary test case', function() {
+    beforeEach(function() {
+        this.saying = 'cheep';
+    });
+
+    it('should say cheep', function() {
+        expect(this.saying).toEqual('cheep');
+    });
+});
+```
+
+By default, Jasmine looks for a config file at `spec/support/jasmine.json` relative to the root directory. Create that file with these contents:
+```Json
+{
+    "spec_files": [
+        "**/*.spec.js"
+    ]
+}
+```
+
+Finally, add a "scripts" entry to `package.json` by adding this snippet:
+```Json
+"scripts": {
+  ...
+  "test": "jasmine"
+},
+```
+
+Running `npm test` will execute all test cases in the project (as long as their files end in ".spec.js")
+
+A few notes about unit testing in general and Jasmine specifically:
+1. It is very important to consider the asynchronous of Javascript when choosing a testing library. The ideal case is that a test case can return a [Promise](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Promise). This allows a test case to be declared "async" and to simply await the exeuction of the system under test before asserting the results.
+2. I like to put the test case files in the same directory as the system under test. This way, it is easy to locate the test files, they are alphabetically immediately after the file they are testing. It also allows the require call to use a short, relative path.
+3. You may have noticed that I declared the `describe` and `it` callbacks as classic functions and not their arrow-function counterpart. Jasmine automatically creates an empty object and binds it to the callback functions. This allows us to reference `this` to store state between the `beforeEach` calls and the individual test cases. 
+
 ## Dockertize 
 
 Now that we have a simple application running locally we need to figure out a way to package and deploy it to other machines (i.e. Development and Production). We could install NodeJS on a machine and copy the code there. But, we would have to make sure it was the right version of NodeJS. We would have to make sure the packages we depend on (ex. Koa) were installed. And, we would have to modify these things when we upgrade them. This process can be error-prone and time consuming.
@@ -101,6 +147,9 @@ RUN npm install
 
 # Copy everything else (i.e. Code) into the container from our local workspace
 COPY . .
+
+# Run our test cases, if any fail this will fail the docker build command (non-zero exit code)
+RUN npm test
 
 # set the startup command to npm start so when our container runs we start up the server
 # this is way easier then configuring some sort of system daemon
@@ -419,6 +468,130 @@ Now add the following Stages to the `pipeline.template.yml` file within the pipe
 
 Check in the cloudformation.template.yml file and then update the pipeline stack and you sould see two new stacks get created and the pipeline is now four stages long (You may need to refresh). If you update the stack before checking in the template you will probably see a failure in the pipline that it can not find the template file. We now have a continuious delivery pipeline in place that will ensure that infrastructure changes are kept consistent between source control, development and production.
 
+Next we need to get the application running and accessable. There are three main peices to this: A "Task Defintion", a "Service" and an "Application Load Balancer" (also known as a LoadBalancerV2). The task definition is responsible for telling ECS how to launch our application. This includes CPU and memory settings as well as an [IAM role](https://docs.aws.amazon.com/AmazonECS/latest/developerguide/task-iam-roles.html) that will be assumed by the task. Add these resources to your `cloudformation.template.yml` file:
+
+```YAML
+# This is the role that our task will excute as. You can think of this as the ECS equivilent of an instnace profile.
+TaskRole:
+  Type: "AWS::IAM::Role"
+  Properties:
+    AssumeRolePolicyDocument:
+      Version: "2012-10-17"
+      Statement:
+        # Allow ECS the ability to assume this role.
+        - Effect: "Allow"
+          Action: "sts:AssumeRole"
+          Principal:
+            Service: "ecs-tasks.amazonaws.com"
+    ManagedPolicyArns:
+      # We need to be able to pull our docker image. If your docker repo is in the same account this policy will do it.
+      # If you are deploying accross accounts you could remove this and instead ensure that your repo is readable by this role
+      - arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly
+TaskPolicy:
+  # This is an additional policy we are going to attach to our role.
+  # We can add additoinal one-off grants here to allow our container to only access the AWS resources it needs.
+  Type: "AWS::IAM::Policy"
+  Properties:
+    PolicyName: !Sub "${AWS::StackName}-TaskPolicy"
+    Roles:
+      - !Ref TaskRole
+    PolicyDocument:
+      Version: "2012-10-17"
+      Statement:
+        # Allow the task to forward to Cloudwatch logs. (anything we send to stdout or stderr will go there)
+        - Effect: "Allow"
+          Action: 
+            - logs:*
+          Resource: !GetAtt LogGroup.Arn
+# Create a place for logs to go.
+LogGroup:
+  Type: "AWS::Logs::LogGroup"
+  Properties:
+    RetentionInDays: 30
+# This defines the resources we need for our Task to execute
+TaskDefinition:
+  Type: "AWS::ECS::TaskDefinition"
+  DependsOn: 
+    # We need a depends on here because without it the task may attempt to start before the policy is attached to the role.
+    - TaskPolicy
+  Properties: 
+    Cpu: 256 #This is 25% of a "vCPU", the smallest amount we can allocate
+    Memory: 512 #This is 512MB, the smallest amount we can allocate
+    ExecutionRoleArn: !GetAtt TaskRole.Arn
+    TaskRoleArn: !GetAtt TaskRole.Arn
+    # These next two properties are the only Fargate specific configuration in the TaskDefinition. 
+    # It forces an 'awsvpc' network mode
+    NetworkMode: awsvpc
+    RequiresCompatibilities:
+      - FARGATE
+    ContainerDefinitions:
+      - Name: ProductService
+        PortMappings:
+          - ContainerPort: 3000
+        Essential: true
+        Image: !Ref Image
+        LogConfiguration:
+          # This tells ECS to send log output to Cloudwatch. The prefix is required by Fargate so don't remove it.
+          LogDriver: "awslogs"
+          Options:
+            awslogs-group: !Ref LogGroup
+            awslogs-region: !Ref AWS::Region
+            awslogs-stream-prefix: ProductService
+```
+
+There is a difference between the way traditional ECS tasks and Fargate tasks obtain IP addresses and communicate with the network. Traditionally, the Docker daemon on the host machine creates a private internal network and issues IP addresses from that network to the containers running on the host. Traffic bound for the wider network is [NATed](https://en.wikipedia.org/wiki/Network_address_translation) out on the host's network interface. With Fargate however, this process changes. ECS actually obtains a new IP address directly from the configured subnet and attaches it directly to the Docker container. This means that the IP address the container sees for itself is actually routable from the wider VPC. Unfortunately, as of right now, there are some issues resolving this address by doing a hostname lookup inside the container. 
+
+The [ECS Service](https://docs.aws.amazon.com/AmazonECS/latest/developerguide/ecs_services.html) governs the execution and placement of a "Task." This is the resource that will handle ensuring the correct number of instances are running. It will handle rolling deployments to ensure no-downtime deployments. It also manage the LoadBalancerV2's list of targets so that requests can be routed only to healthy instances. It also manages the network that those instances execute on. To support this we need to add two new parameters to our Cloudformation template and populate them. Add these to the "Parameters" section of `cloudformation.template.yml`:
+
+```YAML
+VpcId:
+  Type: AWS::EC2::VPC::Id
+  Description: Id of the VPC
+SubnetIds:
+  Type: List<AWS::EC2::Subnet::Id>
+  Description: List of subnet Ids to run in
+```
+
+There are a couple ways to populate these parameters. The simplest is to add the appropriate values to the "ParameterOverrides" section in `pipeline.template.yml`
+
+An alternative way is to create properties files for each environment (ex `dev.parameters.json`) with contents like the following and check them into source control:
+```JSON
+{
+  "VpcId": "vpc-123455e3",
+  "SubnetIds": "subnet-54321,subnet-c5dddef,etc"
+}
+```
+
+Then add these files to the "artifacts" section of `buildspec.yml`. Finally, set the "[TemplateConfiguration](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/continuous-delivery-codepipeline-action-reference.html)" property in `pipeline.template.yml` for each deployment action to the location of this parameter file (ex. "buildResults::dev.parameters.json").
+
+With these networking settings now available in our template we can add the Service resource to `cloudformation.template.yml`:
+
+```YAML
+Service: 
+  Type: AWS::ECS::Service
+  Properties: 
+    Cluster: !Ref ECSCluster
+    # This is new with fargate (obviously)
+    LaunchType: FARGATE
+    # The number of instances we would like to run
+    DesiredCount: 1 
+    # The task to execute
+    TaskDefinition: !Ref TaskDefinition
+#    We haven't setup a load balancer yet so this part is commented out. 
+#    The Service references the loadbalancer rather than the other way around
+#    LoadBalancers: 
+#      - ContainerName: ProductService
+#        ContainerPort: 3000
+#        TargetGroupArn: !Ref TargetGroup
+    NetworkConfiguration: 
+      AwsvpcConfiguration:
+        AssignPublicIp: ENABLED
+        Subnets: !Ref SubnetIds
+    # This is optional (These are the default values)
+    DeploymentConfiguration:
+      MinimumHealthyPercent: 100 #Never allow less than this percentage of servers to be running during a deploy
+      MaximumPercent: 200 # Allow double the number of servers to be running during a deployment
+```
 
 ## Add an alb 
 ## SSL/dns/force HTTPS

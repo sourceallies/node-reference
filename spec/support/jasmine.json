@@ -1,6 +1,5 @@
 {
     "spec_files": [
-        "products/**/*.spec.js",
-        "common/**/*.spec.js"
+        "**/*.spec.js"
     ]
 }

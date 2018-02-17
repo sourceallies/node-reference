@@ -557,8 +557,10 @@ There are a couple ways to populate these parameters. The simplest is to add the
 An alternative way is to create properties files for each environment (ex `dev.parameters.json`) with contents like the following and check them into source control:
 ```JSON
 {
-  "VpcId": "vpc-123455e3",
-  "SubnetIds": "subnet-54321,subnet-c5dddef,etc"
+    "Parameters" : {
+        "VpcId": "vpc-868750e3",
+        "SubnetIds": "subnet-5d24b151,subnet-c5c9fded,subnet-aca64cdb,subnet-2fb7df4a,subnet-62d9cd24,subnet-a8e18192"
+    }
 }
 ```
 
@@ -593,11 +595,71 @@ Service:
       MaximumPercent: 200 # Allow double the number of servers to be running during a deployment
 ```
 
+Check in this template and when CodePipeline deploys it you should have a running service with one task. Next, we will front this service with a load balancer.
+
 ## Add an alb 
+
+For a long time, AWS has supported an HTTP(S) load balancing service in the form of an [Elastic Load Balancer](https://aws.amazon.com/elasticloadbalancing/details/) (Now called a "Classic load balancer"). When paired with ECS, a classic load balancer suffers from a limitation where every node in the cluster it is balancing must be listening on the same port (the port is configured at the cluster level, not the node level). Because of this, a host port had to be mapped to the container port for each running instance. This prevented two containers from sharing a host if they were both mapped to the same host port. Fargate does not allow us to map host ports at all (because we don't control the host). So, we have to use a newer load balancer product called an "Application Load Balancer".
+
+Application Load Balancer (or ALB) consists of three pieces. The Load Balancer represents an IP address and associated domain name that can receive traffic. One or more "Listener" elements configure the ports and protocols the Load Balancer will receive traffic on. We will ultimatly create two of these (one for HTTP on port 80 and one for HTTPS on port 443). Finally, a TargetGroup represents a pool of back end services that can be load balanced accross.
+
+It is worth mentioning that we do not directly configure the TargetGroup to reference our serivce. Instead, we point the service at the target group. The service is responsible for allocating the cluster instances and then injecting their IP addresses into the Load Balancer.
+
+Add the following resources to `cloudformation.template.yaml`:
+
+```YAML
+LoadBalancer:
+  Type: AWS::ElasticLoadBalancingV2::LoadBalancer
+  Properties:
+    Scheme: internet-facing
+    Subnets: !Ref SubnetIds
+LBListener:
+  Type: AWS::ElasticLoadBalancingV2::Listener
+  Properties:
+    DefaultActions:
+    - Type: forward
+      TargetGroupArn: !Ref TargetGroup
+    LoadBalancerArn: !Ref LoadBalancer
+    Port: 80
+    Protocol: HTTP
+TargetGroup:
+  Type: AWS::ElasticLoadBalancingV2::TargetGroup
+  DependsOn: LoadBalancer
+  Properties:
+    TargetType: ip #the default is "instance" but we must use ip to forward to fargate
+    VpcId: !Ref VpcId
+    Protocol: HTTP
+    Port: 80
+    HealthCheckPath: /
+    HealthCheckIntervalSeconds: 10
+    HealthCheckTimeoutSeconds: 5
+    HealthyThresholdCount: 2
+    UnhealthyThresholdCount: 2
+    TargetGroupAttributes:
+      - Key:  deregistration_delay.timeout_seconds
+        Value:  30
+```
+
+You will also need to uncomment these lines from the Service definition:
+
+```YAML
+  LoadBalancers: 
+    - ContainerName: ProductService
+      ContainerPort: 3000
+      TargetGroupArn: !Ref TargetGroup
+```
+
+Once deployed, AWS will assign a hostname to your load balancer that can be obtained by looking at the load balancer console or adding an "Outputs" section to your `cloudformation.template.yml`:
+
+```YAML
+Outputs:
+  LoadBalancerDNS:
+    Value: !GetAtt LoadBalancer.DNSName
+```
+
 ## SSL/dns/force HTTPS
 ## Cognito setup
 ## Adding authentication
-## Add unit testing
 ## Add model validation
 ## Add DynamoDB
 ## Create put test/endpoint

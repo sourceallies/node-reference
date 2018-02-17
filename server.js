@@ -11,6 +11,7 @@ const app = new Koa();
 
 app.use(trackRequests('ProductService-localhost'));
 app.use(setupAuthentication());
+// use "unless"
 app.use(bodyParser());
 app.use(buildRouter().routes());
 

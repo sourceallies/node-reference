@@ -10,8 +10,10 @@ const trackRequests = require('./common/trackRequests');
 const app = new Koa();
 
 app.use(trackRequests('ProductService-localhost'));
-app.use(setupAuthentication());
-// use "unless"
+app.use(setupAuthentication()
+    .unless({path: '/hello'})
+);
+
 app.use(bodyParser());
 app.use(buildRouter().routes());
 
@@ -40,7 +42,7 @@ function setupAuthentication() {
     return jwt({
         secret: jwksRsa.koaJwtSecret({
             cache: true,
-            jwksUri: 'https://cognito-idp.us-east-1.amazonaws.com/us-east-1_xi3tvroaZ/.well-known/jwks.json'
+            jwksUri: 'https://cognito-idp.us-east-1.amazonaws.com/us-east-1_XsX7u4CWq/.well-known/jwks.json'
         }),
         algorithms: ['RS256']
     });

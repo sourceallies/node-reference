@@ -704,10 +704,63 @@ curl https://cognito-idp.us-east-1.amazonaws.com/${cognito_user_pool_id}/.well-k
 We now have a fully managed, standards compliant identity service available for use.
 
 ## Adding authentication
-## Add model validation
-## Add DynamoDB
 
+In order to leverage our new identity provider, we need to add a middleware into the Koa pipeline. This middleware will reject requests that do not contain valid tokens. We can accomplish this by using two libraries: [koa-jwt](https://github.com/koajs/jwt) to validate the token and [jwks-rsa](https://github.com/auth0/node-jwks-rsa) to automatically fetch and cache JWKS documents. Add both of these libraries to the project:
+
+```Bash
+npm install --save koa-jwt jwks-rsa
+```
+
+Require them in at the top of the `server.js` file:
+
+```Javascript
+const jwt = require('koa-jwt');
+const jwksRsa = require('jwks-rsa');
+```
+
+Also in the `server.js` file, add a helper function to create the authentication middleware. You can inject the JWKS url from an environment variable using [process.env](https://nodejs.org/api/process.html#process_process_env). Or, if you are using the same Cognito User Pool in all environments, just keep it simple and hard code it.
+
+```Javascript
+function createAuthMiddleware() {
+  return jwt({
+    secret: jwksRsa.koaJwtSecret({
+      cache: true,
+      jwksUri: 'https://cognito-idp.us-east-1.amazonaws.com/<userPoolId>/.well-known/jwks.json'
+    }),
+    algorithms: ['RS256']
+  });
+}
+```
+
+Lastly, add the following line above the existing `app.use` call in order to ensure authentication happens before processing the request:
+```Javascript
+app.use(createAuthMiddleware());
+```
+
+To test our new setup, start the server and attempt to fetch our hello endpoint:
+```Bash
+curl --verbose http://localhost:3000/hello
+```
+
+You should receive an [HTTP 401](https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/401) back. Now fetch a token from the Cognito token endpoint (they're only valid for so long so get a new one) and include it in the request:
+
+```Bash
+curl --verbose http://localhost:3000/hello \
+  -H 'Authorization: Bearer eyJraWQiOiJcL1dQ........OY4MElfhEJvQ'
+```
+
+We have now implemented a best of breed security solution with only a few lines of code. However, there is one remaining loose end: **If we check in the above changes, then the AWS ECS Service health check will attempt to hit our /hello endpoint and receive a 401 response.** By default, any non-200 response is considered "unhealthy" so it will fail to deploy our service. To remedy this, we are going to exclude the /hello endpoint from authentication by modifing the `use(createAuthMiddleware())` line in `server.js` as follows:
+
+```Javascript
+app.use(createAuthMiddleware()
+    .unless({path: '/hello'}));
+```
+
+We can now safely deploy our service.
+
+## Add DynamoDB
 ## Create put test/endpoint
+## Add model validation
 ## Add e2e smoke test
 ## Tie smoke test to deploy
 ## Add xray

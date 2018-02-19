@@ -658,27 +658,50 @@ Outputs:
 ```
 
 ## SSL/dns/force HTTPS
+
 ## Cognito setup
-1. Create User Pool
-2. Select Customize Defaults and accept them
-3. Select "General Settings / App Clients" on the left and create a new app client with the default settings. Keep the Client ID and client secret for later
-4. Select "App Integration / Domain Name" on the left and set a domain name for the pool
-5. Select "App Integration / Resource Servers" and create a new one
+
+In order to secure our application we are going to leverage [OpenID Connect](http://openid.net/connect/). Each request to our application from either another service or a logged in human user will contain a [JSON Web Token or JWT](https://jwt.io) as a "Bearer" token in the Authorization header. This token not only proves who the client is but also information about that client (Claims) that include email address and roles.
+
+Security is hard. This is why I believe that the best practice is to off load as much security related design to industry standards and as much implementation as possible to third party libraries.
+
+In order to support OpenID Connect we need an "Identity Provider". This is a server that both the client and service trust. The client sends credentials (i.e. Client ID and Secret pair) to obtain a JWT and the service uses the public key of the provider to verify the signature of the token. If your organization already as an OpenID Connect compatable identity provider in place then reach out to the team that manages to inquire about using it as the provider for your application. This will allow single sign on for users that already have accounts at that identity provider. If not, an AWS [Cognito User Pool](https://docs.aws.amazon.com/cognito/latest/developerguide/cognito-user-identity-pools.html) is OpenID compatable. Unfortunately, the Cloudformation support for User Pools is lacking the ability to configure the resources we need so we will have to do this configuration via the Console or command line. 
+
+Log into the AWS console and follow these steps:
+
+1. Select the Cognito service
+2. Select "Manage your User Pools"
+3. Select "Create a User Pool"
+4. Enter a name for this pool (you will most likely have only one shared across all apps and environments)
+4. Select "Review Defaults" and accept them
+3. Select "General Settings / App Clients" on the left and create a new app client with the default settings. This represents a "Service account" client to the user pool. A Client ID and secret will be generated. Keep these secrets secure, we will need them later.
+4. Select "App Integration / Domain Name" on the left and set a domain name for the pool. This is needed so we can have an endpoint to authenticate to.
+5. Select "App Integration / Resource Servers" and create a new one. Our "Product Service" is considered a resource server
     - The name can be anything you want (ex. Product Service)
     - The Identifier can be anything you want. Using the base URL of the service is a good choice.
     - Create two custom scopes "products:read" and "products:write"
-6. Select "App Integration / App Client Settings" and select the "Product Service" application.
+6. Select "App Integration / App Client Settings" and select the App Client created above. This is where we give our "Product Serivce Client" access to the "Product Service Resource Server". 
     - Enable "Cognito User Pool" identity provider
     - Select "Client credentials" for an allowed auth flow
     - Select the two custom scopes we created earlier.
 
+To test our new identity provider, we can use curl to attempt to obtain a token. Execute the following (setting the client_id, client_secret and domain_prefix with your values)
+
 ```Bash
 curl -X POST \
-  https://2aciai7otvuog1escub55aaeme:1423b3rg6lrrdpp0rgr9jmpvj4f8oujnb07jr14pdh5tn1qgb2kj@prowe-node-ref-temp.auth.us-east-1.amazoncognito.com/oauth2/token \
+  https://${client_id}:${client_secret}@${domain_prefix}.auth.us-east-1.amazoncognito.com/oauth2/token \
   -H 'Content-Type: application/x-www-form-urlencoded' \
   -d grant_type=client_credentials
 ```
+You should receive a JSON response that contains an "access_token" field. This token is the JWT that is sent to the server. If you are curious what the token contains, it can be copy/pasted into [jwt.io](https://jwt.io) to view it.
 
+To verify the signature of our token we need to obtain the public key for our identity provider. Most identity providers rotate this key-pair on a frequient (ex. hourly) basis. To always obtain uptodate public keys we can leverage the [JSON Web Key Set or JWKS](https://tools.ietf.org/html/rfc7517) standard. This specification provides a standard way to encode a set of public keys in a JSON document and then make it available at a URL. We can fetch the current JWKS document for our identity provider by executing this command with the corect `cognito_user_pool_id` value:
+
+```Bash
+curl https://cognito-idp.us-east-1.amazonaws.com/${cognito_user_pool_id}/.well-known/jwks.json
+```
+
+We now have a fully managed, standards compliant identity service available for use.
 
 ## Adding authentication
 ## Add model validation

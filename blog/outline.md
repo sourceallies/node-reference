@@ -630,7 +630,7 @@ TargetGroup:
     VpcId: !Ref VpcId
     Protocol: HTTP
     Port: 80
-    HealthCheckPath: /
+    HealthCheckPath: /hello
     HealthCheckIntervalSeconds: 10
     HealthCheckTimeoutSeconds: 5
     HealthyThresholdCount: 2
@@ -659,9 +659,31 @@ Outputs:
 
 ## SSL/dns/force HTTPS
 ## Cognito setup
+1. Create User Pool
+2. Select Customize Defaults and accept them
+3. Select "General Settings / App Clients" on the left and create a new app client with the default settings. Keep the Client ID and client secret for later
+4. Select "App Integration / Domain Name" on the left and set a domain name for the pool
+5. Select "App Integration / Resource Servers" and create a new one
+    - The name can be anything you want (ex. Product Service)
+    - The Identifier can be anything you want. Using the base URL of the service is a good choice.
+    - Create two custom scopes "products:read" and "products:write"
+6. Select "App Integration / App Client Settings" and select the "Product Service" application.
+    - Enable "Cognito User Pool" identity provider
+    - Select "Client credentials" for an allowed auth flow
+    - Select the two custom scopes we created earlier.
+
+```Bash
+curl -X POST \
+  https://2aciai7otvuog1escub55aaeme:1423b3rg6lrrdpp0rgr9jmpvj4f8oujnb07jr14pdh5tn1qgb2kj@prowe-node-ref-temp.auth.us-east-1.amazoncognito.com/oauth2/token \
+  -H 'Content-Type: application/x-www-form-urlencoded' \
+  -d grant_type=client_credentials
+```
+
+
 ## Adding authentication
 ## Add model validation
 ## Add DynamoDB
+
 ## Create put test/endpoint
 ## Add e2e smoke test
 ## Tie smoke test to deploy

@@ -1,5 +1,3 @@
-'use strict';
-
 const validate = require("validate.js");
 
 const constraints = {
@@ -9,7 +7,11 @@ const constraints = {
             pattern: /^(?!\s*$).+/,
             message: "can't be blank"
         }
+    },
+    imageURL: {
+        presence: true,
+        url: {}
     }
 }
 
-module.exports.validate = (product) => validate(product, constraints);
+module.exports = (product) => validate(product, constraints);

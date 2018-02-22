@@ -13,7 +13,7 @@ Respond to the questions however you wish.
 While we could create an HTTP server using the raw NodeJS APIs, like most languages, it is much easier to use a library that will handle request routing and other low lever HTTP concerns for us. For this purpose I have choosen [Koa](http://koajs.com). I started by looking at [Express](https://expressjs.com) which was one of the first such libraries to gain popularity and is still probably the most popular by downloads. However, in order to make unit testing simpler and handler methods easier to read, I wanted a library that would allow me to return a `Promise` so that I could leverage async/await rather than callbacks. [HAPI](https://hapijs.com) is also another good option. Run the following command to install Koa and save it into your package.json file 
 
 ```Bash
-npm install --save koa
+npm install --save koa koa-bodyparser
 ```
 
 Next, create a file called `server.js` with the following content:
@@ -57,10 +57,12 @@ module.exports = async function Hello(ctx) {
 Now modify `server.js` to use the koa-router package:
 ```Javascript
 const Koa = require('koa');
+const bodyParser = require('koa-bodyparser');
 const Router = require('koa-router');
 
 const app = new Koa();
 
+app.use(bodyParser());
 app.use(buildRouter().routes());
 app.listen(3000);
 
@@ -801,7 +803,241 @@ Environment:
 We can now deploy our template so we have a table. Grab the ARN of this table and set it as the `PRODUCTS_TABLE_NAME` environment variable locally so we can continue development.
 
 ## Create put test/endpoint
+
+Lets start by writing a spec for our `POST /products` endpoint. Create a file called `products/createProduct.spec.js` with the following contents:
+
+```Javascript
+const proxyquire = require('proxyquire');
+
+describe('products', function () {
+    describe('createProduct', function () {
+        beforeEach(function () {
+            this.product = {
+                name: 'widget',
+                imageURL: 'https://example.com/widget.jpg'
+            };
+
+            this.context = {
+                request: {
+                    body: this.product
+                }
+            };
+
+            this.awsResult = {
+                promise: () => Promise.resolve()
+            };
+            this.documentClient = {
+                put: (params) => this.awsResult
+            };
+            spyOn(this.documentClient, 'put').and.callThrough();
+
+            this.createProduct = proxyquire('./createProduct', {
+                "./documentClient": this.documentClient
+            });
+        });
+
+        it('should pass the correct TableName to documentClient.put', async function () {
+            await this.createProduct(this.context);
+            expect(this.documentClient.put.calls.argsFor(0)[0].TableName).toEqual('Products');
+        });
+
+        it('should pass the postedProduct to documentClient.put', async function () {
+            await this.createProduct(this.context);
+            expect(this.documentClient.put.calls.argsFor(0)[0].Item).toBe(this.product);
+        });
+
+        it('should set the product as the body', async function () {
+            await this.createProduct(this.context);
+            expect(this.context.body).toBe(this.product);
+        });
+
+        it('should populate an id on the product', async function () {
+            await this.createProduct(this.context);
+            expect(this.documentClient.put.calls.argsFor(0)[0].Item.id).toBeDefined();
+        });
+    });
+});
+```
+
+We will need a couple of libraries. We are using [Proxyquire](https://github.com/thlorenz/proxyquire) so that we can intercept node [require](https://nodejs.org/api/modules.html#modules_require) calls and replace them by returning a Mock. We are using the [aws-sdk](https://www.npmjs.com/package/aws-sdk) to access dynamoDB. We also need a way to generate unique Ids. [shortid](https://www.npmjs.com/package/shortid) is good for that. Install these packages by running the following:
+
+```Bash
+npm install --save-dev proxyquire
+npm install --save aws-sdk shortid
+```
+
+Create a stub implementation as `products/createProduct.js` with these contents:
+
+```Javascript
+module.exports = async function createProduct(ctx) {
+}
+```
+
+Run `npm test` and you should see a bunch of failures. Welcome to the "red" in "Red Green Refactor". Feel free to lookup the [AWS DocumentClient](https://docs.aws.amazon.com/AWSJavaScriptSDK/latest/AWS/DynamoDB/DocumentClient.html) and [Koa context](https://github.com/koajs/koa/blob/master/docs/api/context.md) documentation and implement the endpoint. Otherwise, replace the contents of `products/createProduct.js` with this implementation:
+
+```Javascript
+const shortid = require('shortid');
+const AWS = require('aws-sdk');
+const documentClient = new AWS.DynamoDB.DocumentClient();
+const productsTableName = process.env.PRODUCTS_TABLE_NAME;
+
+module.exports = async function createProduct(ctx) {
+    const product = ctx.request.body;
+
+    product.id = shortid.generate();
+    await saveProduct(product);
+    ctx.body = product;
+};
+
+async function saveProduct(product) {
+    return await documentClient.put({
+        TableName: productsTableName,
+        Item: product
+    }).promise();
+}
+```
+
+Finally, add this in as a route inside our `buildRouter()` function within `server.js` to route the request:
+
+```Javascript
+function buildRouter() {
+  ...
+  router.post('/products', require('./products/createProduct'));
+  ...
+}
+```
+
+Start the application with `npm start` and you shoud be able to post a sample payload to [http://localhost:3000/products]. Remember to set the "Content-Type" header to "application/json".
+
 ## Add model validation
+
+We now have a service that allows us to create product records but does not provide any mechanism for ensuring those products contain all the required data we need in the correct format. For this, we need data validation.
+
+While you could certainly implement validation logic by hand using a bunch of "if" statements. It can be come suprisingly complicated quickly. Remember that most validators not only need to determine if a model is valid, but also **all** of the reasons it is not valid. When looking for a validation library there are three things I like to consider:
+
+  1. Does this library have a good collection of out-of-the-box validation rules that I might need on this project. Remember that things like email and phone validation is more complicated than it seems. (Checkout out some of these [valid email addresses on Wikipedia](https://en.wikipedia.org/wiki/Email_address#Syntax)).
+  2. Does it have good documentation on how to write a "custom" validation rule. Not all rules are going to be covered by the built in validators so it should be clear how to hook in our own logic.
+  3. How are custom rules that are asyncronous handled? A rule that checks the database for duplicates or queries a remote service to determine if something is valid should allow the rule to return a Promise or invoke a callback.
+
+For this project we'll be using [Validate.js](https://validatejs.org). While not having a large library of built in rules, it has very good support for async validators. Run `npm install --save validate.js` to install it and then create a `products/validateProduct.spec.js` file with these contents for our tests:
+
+```Javascript
+describe('validateProduct', function () {
+    beforeEach(function () {
+        this.validProduct = {
+            name: 'widget',
+            imageURL: 'https://example.com/widget.jpg'
+        };
+        this.validateProduct = require('./validateProduct');
+    });
+  
+    it('should return nothing if the product is valid', function() {
+        const result = this.validateProduct(this.validProduct);
+        expect(result).not.toBeDefined();
+    });
+  
+    describe('name', function() {
+      it('should return invalid if name is undefined', function() {
+          delete this.validProduct.name;
+          const result = this.validateProduct(this.validProduct);
+          expect(result.name).toContain("Name can't be blank");
+      });
+  
+      it('should return invalid if name is an empty string', function() {
+          this.validProduct.name = '';
+          const result = this.validateProduct(this.validProduct);
+          expect(result.name).toContain("Name can't be blank");
+      });
+  
+      it('should return invalid if name is a blank string', function() {
+          this.validProduct.name = '   ';
+          const result = this.validateProduct(this.validProduct);
+          expect(result.name).toContain("Name can't be blank");
+      });
+  
+      it('should return valid if name has a space', function() {
+          this.validProduct.name = 'test product';
+          const result = this.validateProduct(this.validProduct);
+          expect(result).not.toBeDefined();
+      });
+    });
+
+    describe('imageURL', function() {
+        it('should return invalid if undefined', function() {
+            delete this.validProduct.imageURL;
+            const result = this.validateProduct(this.validProduct);
+            expect(result.imageURL).toContain("Image url can't be blank");
+        });
+    
+        it('should return invalid if an empty string', function() {
+            this.validProduct.imageURL = '';
+            const result = this.validateProduct(this.validProduct);
+            expect(result.imageURL).toContain("Image url is not a valid url");
+        });
+    });
+});
+```
+
+We can implement the validator by creating `products/validateProduct.js` with these contents:
+
+```Javascript
+const validate = require("validate.js");
+
+const constraints = {
+    name: {
+        presence: true,
+        format: {
+            pattern: /^(?!\s*$).+/,
+            message: "can't be blank"
+        }
+    },
+    imageURL: {
+        presence: true,
+        url: {}
+    }
+}
+
+module.exports = (product) => validate(product, constraints);
+```
+
+Now all we have to do is wire in our validation functionality to our `createProduct` module. Add the following peices to `products/createProduct.spec.js`:
+
+```Javascript
+...
+beforeEach(function () {
+    ...
+
+    this.validateProduct = (product) => undefined;
+    spyOn(this, 'validateProduct').and.callThrough();
+
+    this.createProduct = proxyquire('./createProduct', {
+        "./documentClient": this.documentClient,
+        './validateProduct': this.validateProduct,
+    });
+});
+...
+it('should return validation errors as the body if validation fails', async function(){
+    let errors = {name: []};
+    this.validateProduct.and.returnValue(errors);
+    await this.createProduct(this.context);
+    expect(this.context.body).toBe(errors);
+});
+
+it('should set status to 400 if validation fails', async function(){
+    this.validateProduct.and.returnValue({name: []});
+    await this.createProduct(this.context);
+    expect(this.context.status).toEqual(400);
+});
+
+it('should not save the product if validation fails', async function(){
+    this.validateProduct.and.returnValue({name: []});
+    await this.createProduct(this.context);
+    expect(this.documentClient.put).not.toHaveBeenCalled();
+});
+```
+
+Validation is now in place.
+
 ## Add e2e smoke test
 ## Tie smoke test to deploy
 ## Add xray

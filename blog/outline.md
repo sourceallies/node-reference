@@ -759,6 +759,47 @@ app.use(createAuthMiddleware()
 We can now safely deploy our service.
 
 ## Add DynamoDB
+
+Before we can start building out our product endpoints, we need a place to store them. For that we are turning to [DynamoDB](https://aws.amazon.com/dynamodb/). Tables are the main component, not a "database" so we can create just a single table. Add the following to `cloudformation.template.yml`:
+
+```YAML
+ProductsTable:
+    Type: "AWS::DynamoDB::Table"
+    Properties:
+      AttributeDefinitions:
+        - AttributeName: id
+          AttributeType: S
+      KeySchema:
+        - AttributeName: id
+          KeyType: "HASH"
+      ProvisionedThroughput: 
+        ReadCapacityUnits: 1
+        WriteCapacityUnits: 1
+```
+
+Notice how we aren't specifying every field in our product structure. Dynamo only requires we tell it about attribute we are going to index (the Primary Key as well as any global secondary indexes).
+
+We need to grant our application access to this table so add the following to the Statement array inside the TaskPolicy:
+```YAML
+...
+    - Effect: "Allow"
+      Action: 
+        - dynamodb:*
+      Resource: !GetAtt ProductsTable.Arn
+```
+
+Now all we have to do is tell our task the ARN of this table. Add and `Environment` section to the ProductsService container definition (if it does not already exist). We are also adding our region:
+
+```YAML
+Environment:
+  - Name: PRODUCTS_TABLE_NAME
+    Value: !Ref ProductsTable
+  - Name: AWS_REGION
+    Value: !Ref "AWS::RegionId"
+```
+
+We can now deploy our template so we have a table. Grab the ARN of this table and set it as the `PRODUCTS_TABLE_NAME` environment variable locally so we can continue development.
+
 ## Create put test/endpoint
 ## Add model validation
 ## Add e2e smoke test

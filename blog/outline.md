@@ -913,13 +913,13 @@ Start the application with `npm start` and you shoud be able to post a sample pa
 
 We now have a service that allows us to create product records but does not provide any mechanism for ensuring those products contain all the required data we need in the correct format. For this, we need data validation.
 
-While you could certainly implement validation logic by hand using a bunch of "if" statements. It can be come suprisingly complicated quickly. Remember that most validators not only need to determine if a model is valid, but also **all** of the reasons it is not valid. When looking for a validation library there are three things I like to consider:
+While you could certainly implement validation logic by hand using a bunch of "if" statements. It can become suprisingly complicated quickly. Remember that most validators not only need to determine if a model is valid, but also **all** of the reasons it is not valid. When looking for a validation library there are three things I like to consider:
 
-  1. Does this library have a good collection of out-of-the-box validation rules that I might need on this project. Remember that things like email and phone validation is more complicated than it seems. (Checkout out some of these [valid email addresses on Wikipedia](https://en.wikipedia.org/wiki/Email_address#Syntax)).
+  1. Does this library have a good collection of out-of-the-box validation rules that I might need on this project. Remember that things like email and phone validation are more complicated than they seem. (Checkout out some of these [valid email addresses on Wikipedia](https://en.wikipedia.org/wiki/Email_address#Syntax)).
   2. Does it have good documentation on how to write a "custom" validation rule. Not all rules are going to be covered by the built in validators so it should be clear how to hook in our own logic.
   3. How are custom rules that are asyncronous handled? A rule that checks the database for duplicates or queries a remote service to determine if something is valid should allow the rule to return a Promise or invoke a callback.
 
-For this project we'll be using [Validate.js](https://validatejs.org). While not having a large library of built in rules, it has very good support for async validators. Run `npm install --save validate.js` to install it and then create a `products/validateProduct.spec.js` file with these contents for our tests:
+For this project we'll be using [Joi](https://github.com/hapijs/joi). While not having great support for async validators, it has a large library of built in validation rules. Run `npm install --save joi` to install it and then create a `products/validateProduct.spec.js` file with these contents for our tests:
 
 ```Javascript
 describe('validateProduct', function () {
@@ -940,19 +940,19 @@ describe('validateProduct', function () {
       it('should return invalid if name is undefined', function() {
           delete this.validProduct.name;
           const result = this.validateProduct(this.validProduct);
-          expect(result.name).toContain("Name can't be blank");
+          expect(result['/name']).toContain('"name" is required');
       });
   
       it('should return invalid if name is an empty string', function() {
           this.validProduct.name = '';
           const result = this.validateProduct(this.validProduct);
-          expect(result.name).toContain("Name can't be blank");
+          expect(result['/name']).toContain('"name" is not allowed to be empty');
       });
   
       it('should return invalid if name is a blank string', function() {
           this.validProduct.name = '   ';
           const result = this.validateProduct(this.validProduct);
-          expect(result.name).toContain("Name can't be blank");
+          expect(result['/name']).toContain('"name" is not allowed to be empty');
       });
   
       it('should return valid if name has a space', function() {
@@ -966,38 +966,52 @@ describe('validateProduct', function () {
         it('should return invalid if undefined', function() {
             delete this.validProduct.imageURL;
             const result = this.validateProduct(this.validProduct);
-            expect(result.imageURL).toContain("Image url can't be blank");
+            expect(result['/imageURL']).toContain('"imageURL" is required');
         });
     
         it('should return invalid if an empty string', function() {
-            this.validProduct.imageURL = '';
+            this.validProduct.imageURL = 'abc';
             const result = this.validateProduct(this.validProduct);
-            expect(result.imageURL).toContain("Image url is not a valid url");
+            expect(result['/imageURL']).toContain('"imageURL" must be a valid uri');
         });
     });
 });
 ```
 
+You may have noticed that the format of the return value of the validate function is a bit odd. If there are no validation errors we are returning `undefined`. Otherwise, we are returning an object where each key of the object is a slash separated property path and the value is an array of errors. The reason we are doing this is because the validation errors are going to ultimately be returned to the client of our service. We will need to document the contract of what the client should expect back from our endpoints in the body when a 400 status code is received. We could have used simple property names for our keys but over time it is reasonable to assume that our model will grow to contain arrays, nested objects and other non-flat structures. How do we represent errors at these lower levels? How do we tell the client that the "startDate" field on the 3rd item in an array is at fault? When faced with these kind of questions, it can help to leverage an existing specification if that specification can be implemented without undue burden. In this case, we can leverage [JSON pointer](https://tools.ietf.org/html/rfc6901) and because we plan on using [JSON Patch](https://tools.ietf.org/html/rfc6902) to handle updates both endpoints will have a consistant way of referencing fields.
+
 We can implement the validator by creating `products/validateProduct.js` with these contents:
 
 ```Javascript
-const validate = require("validate.js");
+const Joi = require('joi');
 
-const constraints = {
-    name: {
-        presence: true,
-        format: {
-            pattern: /^(?!\s*$).+/,
-            message: "can't be blank"
-        }
-    },
-    imageURL: {
-        presence: true,
-        url: {}
+const schema = Joi.object({
+    name: Joi.string()
+        .required()
+        .trim(),
+    imageURL: Joi.string()
+        .required()
+        .trim()
+        .uri()
+});
+
+const options = {
+    abortEarly: false,
+};
+
+module.exports = function validateProduct(product) {
+    let validationResults = schema.validate(product, options);
+    let errors = validationResults.error && validationResults.error.details;
+    if (errors && errors.length) {
+        const collapsedErrors = {};
+        errors.forEach(err => {
+            let jsonPointer = '/' + err.path.join('/');
+            let existingErrorsForField = collapsedErrors[jsonPointer] || [];
+            collapsedErrors[jsonPointer] = [...existingErrorsForField, err.message];
+        });
+        return collapsedErrors;
     }
-}
-
-module.exports = (product) => validate(product, constraints);
+};
 ```
 
 Now all we have to do is wire in our validation functionality to our `createProduct` module. Add the following peices to `products/createProduct.spec.js`:

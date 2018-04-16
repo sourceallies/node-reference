@@ -16,19 +16,19 @@ describe('validateProduct', function () {
       it('should return invalid if name is undefined', function() {
           delete this.validProduct.name;
           const result = this.validateProduct(this.validProduct);
-          expect(result.name).toContain("Name can't be blank");
+          expect(result['/name']).toContain('"name" is required');
       });
   
       it('should return invalid if name is an empty string', function() {
           this.validProduct.name = '';
           const result = this.validateProduct(this.validProduct);
-          expect(result.name).toContain("Name can't be blank");
+          expect(result['/name']).toContain('"name" is not allowed to be empty');
       });
   
       it('should return invalid if name is a blank string', function() {
           this.validProduct.name = '   ';
           const result = this.validateProduct(this.validProduct);
-          expect(result.name).toContain("Name can't be blank");
+          expect(result['/name']).toContain('"name" is not allowed to be empty');
       });
   
       it('should return valid if name has a space', function() {
@@ -42,13 +42,13 @@ describe('validateProduct', function () {
         it('should return invalid if undefined', function() {
             delete this.validProduct.imageURL;
             const result = this.validateProduct(this.validProduct);
-            expect(result.imageURL).toContain("Image url can't be blank");
+            expect(result['/imageURL']).toContain('"imageURL" is required');
         });
     
         it('should return invalid if an empty string', function() {
-            this.validProduct.imageURL = '';
+            this.validProduct.imageURL = 'abc';
             const result = this.validateProduct(this.validProduct);
-            expect(result.imageURL).toContain("Image url is not a valid url");
+            expect(result['/imageURL']).toContain('"imageURL" must be a valid uri');
         });
     });
 });

@@ -1,17 +1,12 @@
 
 const AWS = require("aws-sdk");
 
-AWS.config.update({
-    region: "us-east-1",
-    accessKeyId: 'abc',
-    secretAccessKey: 'abc',
-    endpoint: "http://localhost:8000"
+const dynamodb = new AWS.DynamoDB({
+    endpoint: process.env.ENDPOINT
 });
 
-const dynamodb = new AWS.DynamoDB();
-
 const params = {
-    TableName: "Products",
+    TableName: process.env.PRODUCTS_TABLE_NAME,
     KeySchema: [
         { AttributeName: "id", KeyType: "HASH" }
     ],
@@ -24,10 +19,13 @@ const params = {
     }
 };
 
-dynamodb.createTable(params, function (err, data) {
-    if (err) {
+dynamodb.createTable(params)
+    .promise()
+    .catch(err => {
         console.error("Unable to create table. Error JSON:", JSON.stringify(err, null, 2));
-    } else {
+        process.exit(1);
+    })
+    .then(data => {
         console.log("Created table. Table description JSON:", JSON.stringify(data, null, 2));
-    }
-});
+        process.exit(0);
+    });

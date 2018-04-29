@@ -7,8 +7,21 @@
         {
             "type": "node",
             "request": "launch",
+            "name": "Tests",
+            "program": "${workspaceFolder}/node_modules/.bin/jasmine",
+        },
+        {
+            "type": "node",
+            "request": "launch",
             "name": "Launch Program",
-            "program": "${workspaceFolder}/server.js"
+            "program": "${workspaceFolder}/server.js",
+            "env": {
+                "AWS_REGION": "us-east-1",
+                "AWS_ACCESS_KEY_ID": "fake-key",
+                "AWS_SECRET_ACCESS_KEY": "fake-secret",
+                "ENDPOINT": "http://localhost:8000",
+                "PRODUCTS_TABLE_NAME": "Products"
+            }
         }
     ]
 }

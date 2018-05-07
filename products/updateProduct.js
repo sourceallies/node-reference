@@ -14,12 +14,17 @@ async function loadProduct(id, Segment) {
     return result.Item;
 }
 
-async function saveProduct(product, Segment) {
+async function saveProduct(product, lastModified, Segment) {
+    product.lastModified = (new Date(Date.now())).toISOString();
+
     await documentClient.put({
         TableName: productsTableName,
         Segment,
         Item: product,
-        ConditionExpression: 'lastModified = :lastModified'
+        ConditionExpression: 'lastModified = :lastModified',
+        ExpressionAttributeValues: {
+            ':lastModified': lastModified
+        }
     }).promise();
 }
 
@@ -27,6 +32,7 @@ module.exports = async function(ctx) {
     const id = ctx.params.id;
     const patchDocument = ctx.request.body;
     const product = await loadProduct(id, ctx.segment);
+    const lastModified = product.lastModified;
 
     const patchErrors = jsonPatch.validate(patchDocument);
     if(patchErrors) {
@@ -51,6 +57,15 @@ module.exports = async function(ctx) {
         return;
     }
 
-    await saveProduct(product, ctx.segment);
+    try {
+        await saveProduct(product, lastModified, ctx.segment);
+    } catch (e) {
+        if (e.name === 'ConditionalCheckFailedException') {
+            ctx.status = 409;
+            return;
+        }
+        throw e;
+    }
+
     ctx.body = product;
 };

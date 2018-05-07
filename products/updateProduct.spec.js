@@ -40,6 +40,10 @@ describe('products', function () {
             });
         });
 
+        afterEach(function() {
+            jasmine.clock().uninstall();
+        });
+
         it('should use the correct parameters to get the current state of the product', async function() {
             await this.updateProduct(this.context);
             const expectedParams = {
@@ -74,9 +78,9 @@ describe('products', function () {
         });
 
         it('should set the lastModified timestamp', async function () {
-            jasmine.clock.mock
+            jasmine.clock().mockDate(new Date(Date.UTC(2018, 03, 05, 06, 07, 08, 100)));
             await this.updateProduct(this.context);
-            
+            expect(this.documentClient.put.calls.argsFor(0)[0].Item.lastModified).toEqual('2018-04-05T06:07:08.100Z');
         });
 
         it('should be a conditional update', async function () {
@@ -142,8 +146,15 @@ describe('products', function () {
             });
         });
 
-        it('should return a 409 status if dynamo throws a constraint exception', function () {
-
+        it('should return a 409 status if dynamo throws a constraint exception', async function () {
+            const checkFailedError = {
+                name: 'ConditionalCheckFailedException'
+            };
+            this.documentClient.put.and.returnValue({
+                promise: () => Promise.reject(checkFailedError)
+            });
+            await this.updateProduct(this.context);
+            expect(this.context.status).toEqual(409);
         });
     });
 });

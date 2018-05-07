@@ -1,13 +1,16 @@
 const Joi = require('joi');
 
 const schema = Joi.object({
+    id: Joi.string(),
     name: Joi.string()
         .required()
         .trim(),
     imageURL: Joi.string()
         .required()
         .trim()
-        .uri()
+        .uri(),
+    lastModified: Joi.string()
+        .isoDate()
 });
 
 const options = {

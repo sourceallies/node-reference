@@ -44,6 +44,7 @@ describe('products', function () {
             await this.updateProduct(this.context);
             const expectedParams = {
                 TableName: 'Products',
+                Segment: undefined,
                 Key: {
                     id: 'abc'
                 }
@@ -72,7 +73,24 @@ describe('products', function () {
             expect(this.documentClient.put.calls.argsFor(0)[0].Item.name).toEqual('new name')            
         });
 
-        it('should have a conditional exp')
+        it('should set the lastModified timestamp', async function () {
+            jasmine.clock.mock
+            await this.updateProduct(this.context);
+            
+        });
+
+        it('should be a conditional update', async function () {
+            await this.updateProduct(this.context);
+            expect(this.documentClient.put.calls.argsFor(0)[0].ConditionExpression).toEqual('lastModified = :lastModified');
+        });
+
+        it('should provide lastModifed as the condition', async function () {
+            await this.updateProduct(this.context);
+            const expectedValues = {
+                ':lastModified': '2018-01-02T03:04:05.000Z'
+            }
+            expect(this.documentClient.put.calls.argsFor(0)[0].ExpressionAttributeValues).toEqual(expectedValues);
+        });
 
         it('should return a 400 status code if the patch document is invalid', async function () {
             this.context.request.body[0].op = 'bad';
@@ -125,7 +143,7 @@ describe('products', function () {
         });
 
         it('should return a 409 status if dynamo throws a constraint exception', function () {
-            
+
         });
     });
 });

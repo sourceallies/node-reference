@@ -23,9 +23,13 @@ describe('products', function () {
             this.documentClient = {
                 get: () => ({
                     promise: () => Promise.resolve(this.getResponse)
+                }),
+                put: () => ({
+                    promise: () => Promise.resolve()
                 })
             };
             spyOn(this.documentClient, 'get').and.callThrough();
+            spyOn(this.documentClient, 'put').and.callThrough();
 
             this.validateProduct = (product) => undefined;
             spyOn(this, 'validateProduct').and.callThrough();
@@ -36,7 +40,7 @@ describe('products', function () {
             });
         });
 
-        it('should use the correct parameters to get the current state of the product', function() {
+        it('should use the correct parameters to get the current state of the product', async function() {
             await this.updateProduct(this.context);
             const expectedParams = {
                 TableName: 'Products',
@@ -47,7 +51,7 @@ describe('products', function () {
             expect(this.documentClient.get.calls.argsFor(0)[0]).toEqual(expectedParams);
         });
 
-        it('should validate the patched product', function () {
+        it('should validate the patched product', async function () {
             this.context.request.body = [
                 {op: 'replace', path: '/name', value: 'new name'}
             ];
@@ -55,10 +59,73 @@ describe('products', function () {
             expect(this.validateProduct.calls.argsFor(0)[0].name).toEqual('new name')            
         });
 
-        describe('invalid patch document');
-        describe('validation fails');
-        describe('patch test fails');
+        it('should pass the tablename to save the document', async function() {
+            await this.updateProduct(this.context);
+            expect(this.documentClient.put.calls.argsFor(0)[0].TableName).toEqual('Products');
+        });
 
-        it('should return a 409 statusif dynamo throws a constraint exception')
+        it('should save the patched product', async function () {
+            this.context.request.body = [
+                {op: 'replace', path: '/name', value: 'new name'}
+            ];
+            await this.updateProduct(this.context);
+            expect(this.documentClient.put.calls.argsFor(0)[0].Item.name).toEqual('new name')            
+        });
+
+        it('should have a conditional exp')
+
+        it('should return a 400 status code if the patch document is invalid', async function () {
+            this.context.request.body[0].op = 'bad';
+            await this.updateProduct(this.context);
+            expect(this.context.status).toEqual(400);
+        });
+
+        describe('validation fails', function () {
+            beforeEach(function() {
+                this.validationError = {
+                    '/name': 'some error'
+                };
+                this.validateProduct.and.returnValue(this.validationError);
+            });
+
+            it('should return a 400 status', async function () {
+                await this.updateProduct(this.context);
+                expect(this.context.status).toEqual(400);
+            });
+
+            it('should return the error as the body', async function () {
+                await this.updateProduct(this.context);
+                expect(this.context.body).toEqual(this.validationError);
+            });
+
+            it('should not save the product', async function () {
+                await this.updateProduct(this.context);
+                expect(this.documentClient.put).not.toHaveBeenCalled();                
+            });
+        });
+
+        describe('patch test fails', function () {
+            beforeEach(function() {
+                this.getResponse.Item.name = 'Apple';
+                this.context.request.body = [
+                    {op: 'replace', path: '/name', value: 'Grape'},
+                    {op: 'test', path: '/name', value: 'Orange'}
+                ];
+            });
+
+            it('should return a 409 status', async function () {
+                await this.updateProduct(this.context);
+                expect(this.context.status).toEqual(409);
+            });
+
+            it('should not save the product', async function () {
+                await this.updateProduct(this.context);
+                expect(this.documentClient.put).not.toHaveBeenCalled();                
+            });
+        });
+
+        it('should return a 409 status if dynamo throws a constraint exception', function () {
+            
+        });
     });
 });

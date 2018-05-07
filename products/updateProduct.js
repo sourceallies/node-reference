@@ -14,18 +14,64 @@ async function loadProduct(id, Segment) {
     return result.Item;
 }
 
+function validatePatchDocument(patchDocument) {
+    const patchErrors = jsonPatch.validate(patchDocument);
+    if (patchErrors) {
+        return {
+            status: 400
+        }
+    }
+}
+
+function applyPatchDocument(product, patchDocument) {
+    try {
+        jsonPatch.applyPatch(product, patchDocument);
+    } catch (e) {
+        if (e.name === 'TEST_OPERATION_FAILED') {
+            return {
+                body: e.operation,
+                status: 409
+            };
+        }
+        throw e;
+    }
+}
+
+function validatePatchedDocument(product) {
+    const validationErrors = validateProduct(product);
+    if (validationErrors) {
+        return {
+            body: validationErrors,
+            status: 400
+        };
+    }
+}
+
 async function saveProduct(product, lastModified, Segment) {
     product.lastModified = (new Date(Date.now())).toISOString();
-
-    await documentClient.put({
-        TableName: productsTableName,
-        Segment,
-        Item: product,
-        ConditionExpression: 'lastModified = :lastModified',
-        ExpressionAttributeValues: {
-            ':lastModified': lastModified
+    try {
+        await documentClient.put({
+            TableName: productsTableName,
+            Segment,
+            Item: product,
+            ConditionExpression: 'lastModified = :lastModified',
+            ExpressionAttributeValues: {
+                ':lastModified': lastModified
+            }
+        }).promise();
+    } catch (e) {
+        if (e.name === 'ConditionalCheckFailedException') {
+            return {
+                status: 409
+            };
         }
-    }).promise();
+        throw e;
+    }
+
+    return {
+        status: 200,
+        body: product
+    };
 }
 
 module.exports = async function(ctx) {
@@ -34,38 +80,11 @@ module.exports = async function(ctx) {
     const product = await loadProduct(id, ctx.segment);
     const lastModified = product.lastModified;
 
-    const patchErrors = jsonPatch.validate(patchDocument);
-    if(patchErrors) {
-        ctx.status = 400;
-        return;
-    }
-    try {
-        jsonPatch.applyPatch(product, patchDocument);
-    } catch (e) {
-        if (e.name === 'TEST_OPERATION_FAILED') {
-            ctx.body = e.operation;
-            ctx.status = 409;
-            return;
-        }
-        throw e;
-    }
-
-    const validationErrors = validateProduct(product);
-    if (validationErrors) {
-        ctx.body = validationErrors;
-        ctx.status = 400;
-        return;
-    }
-
-    try {
+    const response = validatePatchDocument(patchDocument) ||
+        applyPatchDocument(product, patchDocument) ||
+        validatePatchedDocument(product) ||
         await saveProduct(product, lastModified, ctx.segment);
-    } catch (e) {
-        if (e.name === 'ConditionalCheckFailedException') {
-            ctx.status = 409;
-            return;
-        }
-        throw e;
-    }
 
-    ctx.body = product;
+    ctx.body = response.body;
+    ctx.status = response.status;
 };

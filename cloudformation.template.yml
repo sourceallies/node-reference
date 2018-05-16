@@ -87,7 +87,7 @@ Resources:
             - Name: AWS_XRAY_TRACING_NAME
               Value: ProductService
           PortMappings:
-            - ContainerPort: 80 #Do not change
+            - ContainerPort: 3000
           Essential: true
           Image: !Ref Image
           LogConfiguration:
@@ -106,7 +106,7 @@ Resources:
       TaskDefinition: !Ref TaskDefinition
       LoadBalancers: 
         - ContainerName: ProductService
-          ContainerPort: 80 #Do not change
+          ContainerPort: 3000
           TargetGroupArn: !Ref TargetGroup
       NetworkConfiguration: 
         AwsvpcConfiguration:

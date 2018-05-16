@@ -7,6 +7,12 @@
         {
             "type": "node",
             "request": "launch",
+            "name": "Tests",
+            "program": "${workspaceFolder}/node_modules/.bin/jasmine",
+        },
+        {
+            "type": "node",
+            "request": "launch",
             "name": "Launch Program",
             "program": "${workspaceFolder}/server.js",
             "env": {

@@ -11,6 +11,12 @@ Parameters:
   SubnetIds:
     Type: List<AWS::EC2::Subnet::Id>
     Description: List of subnet Ids to run in
+  BaseDomain:
+    Type: String
+    Description: Domain name to place this application under as a subdomain
+  Subdomain:
+    Type: String
+    Description: Subdomain to deploy this app to
 Resources:
   ProductsTable:
     Type: "AWS::DynamoDB::Table"
@@ -143,8 +149,10 @@ Resources:
       - Type: forward
         TargetGroupArn: !Ref TargetGroup
       LoadBalancerArn: !Ref LoadBalancer
-      Port: 80
-      Protocol: HTTP
+      Port: 443
+      Protocol: HTTPS
+      Certificates:
+        - CertificateArn: !Ref Certificate
   TargetGroup:
     Type: AWS::ElasticLoadBalancingV2::TargetGroup
     DependsOn: LoadBalancer
@@ -162,6 +170,14 @@ Resources:
       TargetGroupAttributes:
         - Key:  deregistration_delay.timeout_seconds
           Value:  30
+  Certificate:
+    Type: AWS::CertificateManager::Certificate
+    Properties:
+      DomainName: !Sub "${Subdomain}.${BaseDomain}"
+      DomainValidationOptions:
+      - DomainName: !Sub "${Subdomain}.${BaseDomain}"
+        ValidationDomain: !Ref BaseDomain
+  
 Outputs:
   LoadBalancerDNS:
     Value: !GetAtt LoadBalancer.DNSName

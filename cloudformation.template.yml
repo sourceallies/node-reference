@@ -177,7 +177,15 @@ Resources:
       DomainValidationOptions:
       - DomainName: !Sub "${Subdomain}.${BaseDomain}"
         ValidationDomain: !Ref BaseDomain
-  
+  DNSRecord:
+    Type: AWS::Route53::RecordSet
+    Properties:
+      HostedZoneName: !Sub "${BaseDomain}."
+      Name: !Sub "${Subdomain}.${BaseDomain}"
+      Type: A
+      AliasTarget:
+        HostedZoneId: !GetAtt "LoadBalancer.CanonicalHostedZoneID"
+        DNSName: !GetAtt "LoadBalancer.DNSName"
 Outputs:
   LoadBalancerDNS:
     Value: !GetAtt LoadBalancer.DNSName

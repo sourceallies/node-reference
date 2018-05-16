@@ -81,7 +81,7 @@ Resources:
             - Name: AWS_XRAY_TRACING_NAME
               Value: ProductService
           PortMappings:
-            - ContainerPort: 3000
+            - ContainerPort: 80 #Do not change
           Essential: true
           Image: !Ref Image
           LogConfiguration:
@@ -90,19 +90,9 @@ Resources:
               awslogs-group: !Ref LogGroup
               awslogs-region: !Ref AWS::Region
               awslogs-stream-prefix: ProductService
-        - Name: XRayDaemon
-          Image: namshi/aws-xray
-          PortMappings:
-            - ContainerPort: 2000
-              Protocol: udp
-          LogConfiguration:
-            LogDriver: "awslogs"
-            Options:
-              awslogs-group: !Ref LogGroup
-              awslogs-region: !Ref AWS::Region
-              awslogs-stream-prefix: XRayDaemon
   Service: 
     Type: AWS::ECS::Service
+    DependsOn: LoadBalancer
     Properties: 
       Cluster: !Ref ECSCluster
       LaunchType: FARGATE
@@ -110,17 +100,42 @@ Resources:
       TaskDefinition: !Ref TaskDefinition
       LoadBalancers: 
         - ContainerName: ProductService
-          ContainerPort: 3000
+          ContainerPort: 80 #Do not change
           TargetGroupArn: !Ref TargetGroup
       NetworkConfiguration: 
         AwsvpcConfiguration:
           AssignPublicIp: ENABLED
           Subnets: !Ref SubnetIds
+  LoadBalancerSG:
+    Type: "AWS::EC2::SecurityGroup"
+    Properties:
+      GroupDescription: "Load balancer security group"
+      VpcId: !Ref VpcId      
+      SecurityGroupIngress:
+        - IpProtocol: "tcp"
+          CidrIp: "0.0.0.0/0"
+          FromPort: 80
+          ToPort: 80
+        - IpProtocol: "tcp"
+          CidrIp: "0.0.0.0/0"
+          FromPort: 443
+          ToPort: 443
+  LoadBalancerToAppAccess:
+    Type: "AWS::EC2::SecurityGroupIngress"
+    Properties:
+      SourceSecurityGroupId: !Ref LoadBalancerSG
+      IpProtocol: "tcp"
+      FromPort: 1
+      ToPort: 65000
+      GroupName: "default"
   LoadBalancer:
+    DependsOn: LoadBalancerToAppAccess
     Type: AWS::ElasticLoadBalancingV2::LoadBalancer
     Properties:
       Scheme: internet-facing
       Subnets: !Ref SubnetIds
+      SecurityGroups:
+        - !Ref LoadBalancerSG
   LBListener:
     Type: AWS::ElasticLoadBalancingV2::Listener
     Properties:

@@ -87,7 +87,7 @@ Resources:
             - Name: AWS_XRAY_TRACING_NAME
               Value: ProductService
           PortMappings:
-            - ContainerPort: 3000
+            - ContainerPort: 80
           Essential: true
           Image: !Ref Image
           LogConfiguration:
@@ -98,7 +98,8 @@ Resources:
               awslogs-stream-prefix: ProductService
   Service: 
     Type: AWS::ECS::Service
-    DependsOn: LoadBalancer
+    DependsOn: 
+      - LoadBalancer
     Properties: 
       Cluster: !Ref ECSCluster
       LaunchType: FARGATE
@@ -106,7 +107,7 @@ Resources:
       TaskDefinition: !Ref TaskDefinition
       LoadBalancers: 
         - ContainerName: ProductService
-          ContainerPort: 3000
+          ContainerPort: 80
           TargetGroupArn: !Ref TargetGroup
       NetworkConfiguration: 
         AwsvpcConfiguration:
@@ -135,7 +136,8 @@ Resources:
       ToPort: 65000
       GroupName: "default"
   LoadBalancer:
-    DependsOn: LoadBalancerToAppAccess
+    DependsOn: 
+      - LoadBalancerToAppAccess
     Type: AWS::ElasticLoadBalancingV2::LoadBalancer
     Properties:
       Scheme: internet-facing
@@ -155,7 +157,8 @@ Resources:
         - CertificateArn: !Ref Certificate
   TargetGroup:
     Type: AWS::ElasticLoadBalancingV2::TargetGroup
-    DependsOn: LoadBalancer
+    DependsOn: 
+      - LoadBalancer
     Properties:
       TargetType: ip
       VpcId: !Ref VpcId

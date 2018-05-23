@@ -79,7 +79,7 @@ module.exports = async function(ctx) {
     const id = ctx.params.id;
     const patchDocument = ctx.request.body;
     const product = await loadProduct(id, ctx.segment);
-    await snapshotProduct({...product});
+    await snapshotProduct({...product}, ctx.segment);
     const lastModified = product.lastModified;
 
     const response = validatePatchDocument(patchDocument) ||

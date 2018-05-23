@@ -24,6 +24,22 @@ Resources:
       ProvisionedThroughput: 
         ReadCapacityUnits: 1
         WriteCapacityUnits: 1
+  ProductsSnapshotTable:
+    Type: "AWS::DynamoDB::Table"
+    Properties:
+      AttributeDefinitions:
+        - AttributeName: id
+          AttributeType: S
+        - AttributeName: lastModified
+          AttributeType: S
+      KeySchema:
+        - AttributeName: id
+          KeyType: "HASH"
+        - AttributeName: lastModified
+          KeyType: "RANGE"
+      ProvisionedThroughput: 
+        ReadCapacityUnits: 1
+        WriteCapacityUnits: 1
   LogGroup:
     Type: "AWS::Logs::LogGroup"
     Properties:
@@ -78,6 +94,8 @@ Resources:
           Environment:
             - Name: PRODUCTS_TABLE_NAME
               Value: !Ref ProductsTable
+            - Name: PRODUCTS_SNAPSHOT_TABLE_NAME
+              Value: !Ref ProductsSnapshotTable
             - Name: AWS_XRAY_TRACING_NAME
               Value: ProductService
           PortMappings:

@@ -21,7 +21,8 @@ export AWS_REGION=us-east-1
 export AWS_ACCESS_KEY_ID=products
 export AWS_SECRET_ACCESS_KEY=fake-secret
 export ENDPOINT=http://localhost:8000
-export PRODUCTS_TABLE_NAME=Products 
+export PRODUCTS_TABLE_NAME=Products
+export PRODUCTS_SNAPSHOT_TABLE_NAME=Products_Snapshots
 
 #create tables
 node products/createTable.js

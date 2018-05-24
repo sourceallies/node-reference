@@ -1,7 +1,7 @@
 
 process.env.AWS_REGION = 'us-east-1';
 const AWS = require('aws-sdk');
-const logGroupName = 'prowe-test-filter';
+const logGroupName = 'prowe-log-stream-test-LogGroup-1S3QR39RX8VKG';
 const logStreamNamePrefix = 'stream1';
 const logs = new AWS.CloudWatchLogs();
 
@@ -22,7 +22,7 @@ async function go() {
         logEvents: [
             {
                 timestamp: Date.now(),
-                message: 'hello world'
+                message: JSON.stringify({operation: 'GetItem', latencyMS: 10})
             }
         ]
     }).promise();

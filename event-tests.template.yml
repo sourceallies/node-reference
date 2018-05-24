@@ -1,0 +1,16 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: Sandbox for testing log events, ok to delete after 5/24/2018
+Resources:
+  LogGroup:
+    Type: "AWS::Logs::LogGroup"
+    Properties:
+      RetentionInDays: 5
+  GetItemLatencyMetric:
+    Type: "AWS::Logs::MetricFilter"
+    Properties: 
+      FilterPattern: '{$.operation="GetItem"}'
+      LogGroupName: !Ref LogGroup
+      MetricTransformations:
+        - MetricNamespace: "ProweCustomMetrics"
+          MetricName: GetItem_LatencyMS
+          MetricValue: "$.latencyMS"

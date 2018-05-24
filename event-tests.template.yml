@@ -14,3 +14,24 @@ Resources:
         - MetricNamespace: "ProweCustomMetrics"
           MetricName: GetItem_LatencyMS
           MetricValue: "$.latencyMS"
+  GetItemLatencyAlarm: 
+    Type: "AWS::CloudWatch::Alarm"
+    Properties:
+      Namespace: ProweCustomMetrics
+      MetricName: GetItem_LatencyMS
+      Statistic: Average
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      Threshold: 50
+      Period: 10
+      EvaluationPeriods: 1
+      AlarmActions:
+        - !Ref AlarmTopic
+  AlarmTopic: 
+    Type: "AWS::SNS::Topic"
+    Properties: 
+      Subscription:
+        - Protocol: email
+          Endpoint: "prowe@sourceallies.com"
+        - Protocol: sms
+          Endpoint: "13098541649"
+  

@@ -22,7 +22,7 @@ async function go() {
         logEvents: [
             {
                 timestamp: Date.now(),
-                message: JSON.stringify({operation: 'GetItem', latencyMS: 10})
+                message: JSON.stringify({operation: 'GetItem', latencyMS: 70})
             }
         ]
     }).promise();

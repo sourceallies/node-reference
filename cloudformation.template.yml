@@ -189,6 +189,61 @@ Resources:
       AliasTarget:
         HostedZoneId: !GetAtt "LoadBalancer.CanonicalHostedZoneID"
         DNSName: !GetAtt "LoadBalancer.DNSName"
+  
+  AlarmTopic: 
+    Type: "AWS::SNS::Topic"
+    Properties: {}
+  SlowResponseTimeAlarm:
+    Type: "AWS::CloudWatch::Alarm"
+    Properties:
+      Namespace: "AWS/ApplicationELB"
+      MetricName: "TargetResponseTime"
+      Dimensions:
+        - Name: "LoadBalancer"
+          Value: !GetAtt "LoadBalancer.LoadBalancerFullName"
+      ExtendedStatistic: p95
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      Threshold: 100
+      Period: 60
+      EvaluationPeriods: 1
+      AlarmActions:
+        - !Ref AlarmTopic
+  Dashboard:
+    Type: "AWS::CloudWatch::Dashboard"
+    Properties:
+      DashboardName: "prowe_dashboard"
+      DashboardBody: !Sub |
+        {
+          "widgets": [
+            {
+              "type": "metric",
+              "width": 24,
+              "properties": {
+                "title": "Average Response Time",
+                "period": 60,
+                "stat": "p95",
+                "region": "${AWS::Region}",
+                "metrics": [
+                  ["AWS/ApplicationELB", "TargetResponseTime", "LoadBalancer", "${LoadBalancer.LoadBalancerFullName}", {"label": "Product Service"}]
+                ]
+              }
+            },
+            {
+              "type": "metric",
+              "width": 24,
+              "properties": {
+                "title": "Request Counts",
+                "period": 60,
+                "stat": "Sum",
+                "region": "${AWS::Region}",
+                "metrics": [
+                  ["AWS/ApplicationELB", "RequestCount", "LoadBalancer", "${LoadBalancer.LoadBalancerFullName}", {"label": "Product Service Requests"}],
+                  ["AWS/ApplicationELB", "HTTPCode_Target_5XX_Count", "LoadBalancer", "${LoadBalancer.LoadBalancerFullName}", {"label": "Product Service 5xx"}]           
+                ]
+              }
+            }
+          ]
+        }
 Outputs:
   LoadBalancerDNS:
     Value: !GetAtt LoadBalancer.DNSName

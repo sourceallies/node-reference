@@ -11,13 +11,13 @@ Resources:
       FilterPattern: '{$.operation="GetItem"}'
       LogGroupName: !Ref LogGroup
       MetricTransformations:
-        - MetricNamespace: "ProweCustomMetrics"
+        - MetricNamespace: !Ref AWS::StackName
           MetricName: GetItem_LatencyMS
           MetricValue: "$.latencyMS"
   GetItemLatencyAlarm: 
     Type: "AWS::CloudWatch::Alarm"
     Properties:
-      Namespace: ProweCustomMetrics
+      Namespace: !Ref AWS::StackName
       MetricName: GetItem_LatencyMS
       Statistic: Average
       ComparisonOperator: GreaterThanOrEqualToThreshold
@@ -28,10 +28,19 @@ Resources:
         - !Ref AlarmTopic
   AlarmTopic: 
     Type: "AWS::SNS::Topic"
-    Properties: 
-      Subscription:
-        - Protocol: email
-          Endpoint: "prowe@sourceallies.com"
-        - Protocol: sms
-          Endpoint: "13098541649"
+    Properties: {}
+
   
+  #Shared
+  EmailAlarmSubscription:
+    Type: "AWS::SNS::Subscription"
+    Properties:
+      TopicArn: !Ref AlarmTopic
+      Protocol: email
+      Endpoint: "prowe@sourceallies.com"
+  TxtAlarmSubscription:
+    Type: "AWS::SNS::Subscription"
+    Properties:
+      TopicArn: !Ref AlarmTopic
+      Protocol: sms
+      Endpoint: "13098541649"

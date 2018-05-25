@@ -11,6 +11,12 @@ Parameters:
   SubnetIds:
     Type: List<AWS::EC2::Subnet::Id>
     Description: List of subnet Ids to run in
+  BaseDomain:
+    Type: String
+    Description: Domain name to place this application under as a subdomain
+  Subdomain:
+    Type: String
+    Description: Subdomain to deploy this app to
 Resources:
   ProductsTable:
     Type: "AWS::DynamoDB::Table"
@@ -81,7 +87,7 @@ Resources:
             - Name: AWS_XRAY_TRACING_NAME
               Value: ProductService
           PortMappings:
-            - ContainerPort: 3000
+            - ContainerPort: 80
           Essential: true
           Image: !Ref Image
           LogConfiguration:
@@ -90,19 +96,10 @@ Resources:
               awslogs-group: !Ref LogGroup
               awslogs-region: !Ref AWS::Region
               awslogs-stream-prefix: ProductService
-        - Name: XRayDaemon
-          Image: namshi/aws-xray
-          PortMappings:
-            - ContainerPort: 2000
-              Protocol: udp
-          LogConfiguration:
-            LogDriver: "awslogs"
-            Options:
-              awslogs-group: !Ref LogGroup
-              awslogs-region: !Ref AWS::Region
-              awslogs-stream-prefix: XRayDaemon
   Service: 
     Type: AWS::ECS::Service
+    DependsOn: 
+      - LoadBalancer
     Properties: 
       Cluster: !Ref ECSCluster
       LaunchType: FARGATE
@@ -110,17 +107,43 @@ Resources:
       TaskDefinition: !Ref TaskDefinition
       LoadBalancers: 
         - ContainerName: ProductService
-          ContainerPort: 3000
+          ContainerPort: 80
           TargetGroupArn: !Ref TargetGroup
       NetworkConfiguration: 
         AwsvpcConfiguration:
           AssignPublicIp: ENABLED
           Subnets: !Ref SubnetIds
+  LoadBalancerSG:
+    Type: "AWS::EC2::SecurityGroup"
+    Properties:
+      GroupDescription: "Load balancer security group"
+      VpcId: !Ref VpcId      
+      SecurityGroupIngress:
+        - IpProtocol: "tcp"
+          CidrIp: "0.0.0.0/0"
+          FromPort: 80
+          ToPort: 80
+        - IpProtocol: "tcp"
+          CidrIp: "0.0.0.0/0"
+          FromPort: 443
+          ToPort: 443
+  LoadBalancerToAppAccess:
+    Type: "AWS::EC2::SecurityGroupIngress"
+    Properties:
+      SourceSecurityGroupId: !Ref LoadBalancerSG
+      IpProtocol: "tcp"
+      FromPort: 1
+      ToPort: 65000
+      GroupName: "default"
   LoadBalancer:
+    DependsOn: 
+      - LoadBalancerToAppAccess
     Type: AWS::ElasticLoadBalancingV2::LoadBalancer
     Properties:
       Scheme: internet-facing
       Subnets: !Ref SubnetIds
+      SecurityGroups:
+        - !Ref LoadBalancerSG
   LBListener:
     Type: AWS::ElasticLoadBalancingV2::Listener
     Properties:
@@ -128,11 +151,14 @@ Resources:
       - Type: forward
         TargetGroupArn: !Ref TargetGroup
       LoadBalancerArn: !Ref LoadBalancer
-      Port: 80
-      Protocol: HTTP
+      Port: 443
+      Protocol: HTTPS
+      Certificates:
+        - CertificateArn: !Ref Certificate
   TargetGroup:
     Type: AWS::ElasticLoadBalancingV2::TargetGroup
-    DependsOn: LoadBalancer
+    DependsOn: 
+      - LoadBalancer
     Properties:
       TargetType: ip
       VpcId: !Ref VpcId
@@ -147,6 +173,22 @@ Resources:
       TargetGroupAttributes:
         - Key:  deregistration_delay.timeout_seconds
           Value:  30
+  Certificate:
+    Type: AWS::CertificateManager::Certificate
+    Properties:
+      DomainName: !Sub "${Subdomain}.${BaseDomain}"
+      DomainValidationOptions:
+      - DomainName: !Sub "${Subdomain}.${BaseDomain}"
+        ValidationDomain: !Ref BaseDomain
+  DNSRecord:
+    Type: AWS::Route53::RecordSet
+    Properties:
+      HostedZoneName: !Sub "${BaseDomain}."
+      Name: !Sub "${Subdomain}.${BaseDomain}"
+      Type: A
+      AliasTarget:
+        HostedZoneId: !GetAtt "LoadBalancer.CanonicalHostedZoneID"
+        DNSName: !GetAtt "LoadBalancer.DNSName"
 Outputs:
   LoadBalancerDNS:
     Value: !GetAtt LoadBalancer.DNSName

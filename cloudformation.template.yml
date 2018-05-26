@@ -141,6 +141,9 @@ Resources:
       Subnets: !Ref SubnetIds
       SecurityGroups:
         - !Ref LoadBalancerSG
+      LoadBalancerAttributes:
+        - Key: "idle_timeout.timeout_seconds"
+          Value: 15
   LBListener:
     Type: AWS::ElasticLoadBalancingV2::Listener
     Properties:

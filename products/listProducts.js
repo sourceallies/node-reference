@@ -32,7 +32,7 @@ module.exports = async function getProductList(ctx) {
         Limit: 25,
         ExclusiveStartKey: getExclusiveStartKey(ctx)
     }).promise();
-    console.debug(JSON.stringify({metric: 'DynamoDB.listProducts', duration: getElapsedDurationInMs(startTime)}));
+    console.log(JSON.stringify({metric: 'DynamoDB.listProducts', duration: getElapsedDurationInMs(startTime)}));
 
     addLinkHeaderIfNeeded(ctx, scanOutput.LastEvaluatedKey);
     ctx.body = scanOutput.Items;

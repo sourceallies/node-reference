@@ -38,13 +38,6 @@ describe('products', function () {
             expect(this.documentClient.scan.calls.argsFor(0)[0].TableName).toEqual('Products');
         });
 
-        it('should pass the current segment to documentClient.scan', async function() {
-            const seg = {};
-            this.context.segment = seg;
-            await this.listProducts(this.context);
-            expect(this.documentClient.scan.calls.argsFor(0)[0].Segment).toBe(seg);
-        });
-
         it('should return the product list', async function() {
             await this.listProducts(this.context);
             expect(this.context.body).toEqual(this.response.Items);
@@ -54,7 +47,6 @@ describe('products', function () {
             await this.listProducts(this.context);
             expect(this.documentClient.scan.calls.argsFor(0)[0].Limit).toEqual(25);
         });
-
         
         describe('pagination', function() {
             it('should not return a Link header if the returned LastEvaluatedKey is undefined', async function() {

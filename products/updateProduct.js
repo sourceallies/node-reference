@@ -4,10 +4,9 @@ const validateProduct = require('./validateProduct');
 const jsonPatch = require('fast-json-patch');
 const productsTableName = process.env.PRODUCTS_TABLE_NAME || 'Products';
 
-async function loadProduct(id, Segment) {
+async function loadProduct(id) {
     const result = await documentClient.get({
         TableName: productsTableName,
-        Segment,
         Key: {id}
     }).promise();
 
@@ -47,12 +46,11 @@ function validatePatchedDocument(product) {
     }
 }
 
-async function saveProduct(product, lastModified, Segment) {
+async function saveProduct(product, lastModified) {
     product.lastModified = (new Date(Date.now())).toISOString();
     try {
         await documentClient.put({
             TableName: productsTableName,
-            Segment,
             Item: product,
             ConditionExpression: 'lastModified = :lastModified',
             ExpressionAttributeValues: {
@@ -77,13 +75,13 @@ async function saveProduct(product, lastModified, Segment) {
 module.exports = async function(ctx) {
     const id = ctx.params.id;
     const patchDocument = ctx.request.body;
-    const product = await loadProduct(id, ctx.segment);
+    const product = await loadProduct(id);
     const lastModified = product.lastModified;
 
     const response = validatePatchDocument(patchDocument) ||
         applyPatchDocument(product, patchDocument) ||
         validatePatchedDocument(product) ||
-        await saveProduct(product, lastModified, ctx.segment);
+        await saveProduct(product, lastModified);
 
     ctx.body = response.body;
     ctx.status = response.status;

@@ -1,6 +1,7 @@
 'use strict';
 
 const documentClient = require('./documentClient');
+const getElapsedDurationInMs = require('../common/getElapsedDurationInMs');
 const formatLinkHeader = require('format-link-header');
 const productsTableName = process.env.PRODUCTS_TABLE_NAME || 'Products';
 
@@ -26,7 +27,6 @@ function addLinkHeaderIfNeeded(ctx, lastEvaluatedKey) {
 
 module.exports = async function getProductList(ctx) {
     const scanOutput = await documentClient.scan({
-        Segment: ctx.segment,
         TableName: productsTableName,
         Limit: 25,
         ExclusiveStartKey: getExclusiveStartKey(ctx)

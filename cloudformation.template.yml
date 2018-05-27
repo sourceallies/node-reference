@@ -49,7 +49,6 @@ Resources:
               Service: "ecs-tasks.amazonaws.com"
       ManagedPolicyArns:
         - arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly
-        - arn:aws:iam::aws:policy/AWSXrayWriteOnlyAccess
   TaskPolicy:
     Type: "AWS::IAM::Policy"
     Properties:
@@ -84,10 +83,8 @@ Resources:
           Environment:
             - Name: PRODUCTS_TABLE_NAME
               Value: !Ref ProductsTable
-            - Name: AWS_XRAY_TRACING_NAME
-              Value: ProductService
           PortMappings:
-            - ContainerPort: 80
+            - ContainerPort: 3000
           Essential: true
           Image: !Ref Image
           LogConfiguration:
@@ -107,7 +104,7 @@ Resources:
       TaskDefinition: !Ref TaskDefinition
       LoadBalancers: 
         - ContainerName: ProductService
-          ContainerPort: 80
+          ContainerPort: 3000
           TargetGroupArn: !Ref TargetGroup
       NetworkConfiguration: 
         AwsvpcConfiguration:
@@ -144,6 +141,9 @@ Resources:
       Subnets: !Ref SubnetIds
       SecurityGroups:
         - !Ref LoadBalancerSG
+      LoadBalancerAttributes:
+        - Key: "idle_timeout.timeout_seconds"
+          Value: 15
   LBListener:
     Type: AWS::ElasticLoadBalancingV2::Listener
     Properties:
@@ -163,7 +163,7 @@ Resources:
       TargetType: ip
       VpcId: !Ref VpcId
       Protocol: HTTP
-      Port: 80
+      Port: 3000
       HealthCheckPath: /
       HealthCheckProtocol: HTTP
       HealthCheckIntervalSeconds: 10
@@ -189,6 +189,32 @@ Resources:
       AliasTarget:
         HostedZoneId: !GetAtt "LoadBalancer.CanonicalHostedZoneID"
         DNSName: !GetAtt "LoadBalancer.DNSName"
+  AlarmTopic: 
+    Type: "AWS::SNS::Topic"
+    Properties: {}
+  SlowResponseTimeAlarm:
+    Type: "AWS::CloudWatch::Alarm"
+    Properties:
+      Namespace: "AWS/ApplicationELB"
+      MetricName: "TargetResponseTime"
+      Dimensions:
+        - Name: "LoadBalancer"
+          Value: !GetAtt "LoadBalancer.LoadBalancerFullName"
+      ExtendedStatistic: p95
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      Threshold: 100
+      Period: 60
+      EvaluationPeriods: 1
+      AlarmActions:
+        - !Ref AlarmTopic
 Outputs:
   LoadBalancerDNS:
     Value: !GetAtt LoadBalancer.DNSName
+  LoadBalancerFullName:
+    Value: !GetAtt LoadBalancer.LoadBalancerFullName
+    Export:
+      Name: !Sub "${AWS::StackName}:LoadBalancerFullName"
+  AlarmTopicArn:
+    Value: !Ref AlarmTopic
+    Export:
+      Name: !Sub "${AWS::StackName}:AlarmTopicArn"

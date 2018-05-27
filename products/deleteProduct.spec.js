@@ -38,13 +38,6 @@ describe('products', function () {
             expect(this.documentClient.delete.calls.argsFor(0)[0].Key.id).toEqual('abc');
         });
 
-        it('should pass the current segment to documentClient.delete', async function() {
-            const seg = {};
-            this.context.segment = seg;
-            await this.deleteProduct(this.context);
-            expect(this.documentClient.delete.calls.argsFor(0)[0].Segment).toBe(seg);
-        });
-
         it('should set the status to 204 (no content)', async function (){
             await this.deleteProduct(this.context);
             expect(this.context.status).toEqual(204);

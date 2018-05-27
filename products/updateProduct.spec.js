@@ -52,7 +52,6 @@ describe('products', function () {
             await this.updateProduct(this.context);
             const expectedParams = {
                 TableName: 'Products',
-                Segment: undefined,
                 Key: {
                     id: 'abc'
                 }

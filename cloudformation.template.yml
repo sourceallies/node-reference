@@ -11,6 +11,12 @@ Parameters:
   SubnetIds:
     Type: List<AWS::EC2::Subnet::Id>
     Description: List of subnet Ids to run in
+  BaseDomain:
+    Type: String
+    Description: Domain name to place this application under as a subdomain
+  Subdomain:
+    Type: String
+    Description: Subdomain to deploy this app to
 Resources:
   ProductsTable:
     Type: "AWS::DynamoDB::Table"
@@ -59,7 +65,6 @@ Resources:
               Service: "ecs-tasks.amazonaws.com"
       ManagedPolicyArns:
         - arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly
-        - arn:aws:iam::aws:policy/AWSXrayWriteOnlyAccess
   TaskPolicy:
     Type: "AWS::IAM::Policy"
     Properties:
@@ -96,8 +101,6 @@ Resources:
               Value: !Ref ProductsTable
             - Name: PRODUCTS_SNAPSHOT_TABLE_NAME
               Value: !Ref ProductsSnapshotTable
-            - Name: AWS_XRAY_TRACING_NAME
-              Value: ProductService
           PortMappings:
             - ContainerPort: 3000
           Essential: true
@@ -108,19 +111,10 @@ Resources:
               awslogs-group: !Ref LogGroup
               awslogs-region: !Ref AWS::Region
               awslogs-stream-prefix: ProductService
-        - Name: XRayDaemon
-          Image: namshi/aws-xray
-          PortMappings:
-            - ContainerPort: 2000
-              Protocol: udp
-          LogConfiguration:
-            LogDriver: "awslogs"
-            Options:
-              awslogs-group: !Ref LogGroup
-              awslogs-region: !Ref AWS::Region
-              awslogs-stream-prefix: XRayDaemon
   Service: 
     Type: AWS::ECS::Service
+    DependsOn: 
+      - LoadBalancer
     Properties: 
       Cluster: !Ref ECSCluster
       LaunchType: FARGATE
@@ -134,11 +128,40 @@ Resources:
         AwsvpcConfiguration:
           AssignPublicIp: ENABLED
           Subnets: !Ref SubnetIds
+  LoadBalancerSG:
+    Type: "AWS::EC2::SecurityGroup"
+    Properties:
+      GroupDescription: "Load balancer security group"
+      VpcId: !Ref VpcId      
+      SecurityGroupIngress:
+        - IpProtocol: "tcp"
+          CidrIp: "0.0.0.0/0"
+          FromPort: 80
+          ToPort: 80
+        - IpProtocol: "tcp"
+          CidrIp: "0.0.0.0/0"
+          FromPort: 443
+          ToPort: 443
+  LoadBalancerToAppAccess:
+    Type: "AWS::EC2::SecurityGroupIngress"
+    Properties:
+      SourceSecurityGroupId: !Ref LoadBalancerSG
+      IpProtocol: "tcp"
+      FromPort: 1
+      ToPort: 65000
+      GroupName: "default"
   LoadBalancer:
+    DependsOn: 
+      - LoadBalancerToAppAccess
     Type: AWS::ElasticLoadBalancingV2::LoadBalancer
     Properties:
       Scheme: internet-facing
       Subnets: !Ref SubnetIds
+      SecurityGroups:
+        - !Ref LoadBalancerSG
+      LoadBalancerAttributes:
+        - Key: "idle_timeout.timeout_seconds"
+          Value: 15
   LBListener:
     Type: AWS::ElasticLoadBalancingV2::Listener
     Properties:
@@ -146,16 +169,19 @@ Resources:
       - Type: forward
         TargetGroupArn: !Ref TargetGroup
       LoadBalancerArn: !Ref LoadBalancer
-      Port: 80
-      Protocol: HTTP
+      Port: 443
+      Protocol: HTTPS
+      Certificates:
+        - CertificateArn: !Ref Certificate
   TargetGroup:
     Type: AWS::ElasticLoadBalancingV2::TargetGroup
-    DependsOn: LoadBalancer
+    DependsOn: 
+      - LoadBalancer
     Properties:
       TargetType: ip
       VpcId: !Ref VpcId
       Protocol: HTTP
-      Port: 80
+      Port: 3000
       HealthCheckPath: /
       HealthCheckProtocol: HTTP
       HealthCheckIntervalSeconds: 10
@@ -165,6 +191,48 @@ Resources:
       TargetGroupAttributes:
         - Key:  deregistration_delay.timeout_seconds
           Value:  30
+  Certificate:
+    Type: AWS::CertificateManager::Certificate
+    Properties:
+      DomainName: !Sub "${Subdomain}.${BaseDomain}"
+      DomainValidationOptions:
+      - DomainName: !Sub "${Subdomain}.${BaseDomain}"
+        ValidationDomain: !Ref BaseDomain
+  DNSRecord:
+    Type: AWS::Route53::RecordSet
+    Properties:
+      HostedZoneName: !Sub "${BaseDomain}."
+      Name: !Sub "${Subdomain}.${BaseDomain}"
+      Type: A
+      AliasTarget:
+        HostedZoneId: !GetAtt "LoadBalancer.CanonicalHostedZoneID"
+        DNSName: !GetAtt "LoadBalancer.DNSName"
+  AlarmTopic: 
+    Type: "AWS::SNS::Topic"
+    Properties: {}
+  SlowResponseTimeAlarm:
+    Type: "AWS::CloudWatch::Alarm"
+    Properties:
+      Namespace: "AWS/ApplicationELB"
+      MetricName: "TargetResponseTime"
+      Dimensions:
+        - Name: "LoadBalancer"
+          Value: !GetAtt "LoadBalancer.LoadBalancerFullName"
+      ExtendedStatistic: p95
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      Threshold: 100
+      Period: 60
+      EvaluationPeriods: 1
+      AlarmActions:
+        - !Ref AlarmTopic
 Outputs:
   LoadBalancerDNS:
     Value: !GetAtt LoadBalancer.DNSName
+  LoadBalancerFullName:
+    Value: !GetAtt LoadBalancer.LoadBalancerFullName
+    Export:
+      Name: !Sub "${AWS::StackName}:LoadBalancerFullName"
+  AlarmTopicArn:
+    Value: !Ref AlarmTopic
+    Export:
+      Name: !Sub "${AWS::StackName}:AlarmTopicArn"

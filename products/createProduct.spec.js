@@ -41,13 +41,6 @@ describe('products', function () {
             expect(this.documentClient.put.calls.argsFor(0)[0].TableName).toEqual('Products');
         });
 
-        it('should pass the current segment to documentClient.put', async function() {
-            const seg = {};
-            this.context.segment = seg;
-            await this.createProduct(this.context);
-            expect(this.documentClient.put.calls.argsFor(0)[0].Segment).toBe(seg);
-        });
-
         it('should pass the postedProduct to documentClient.put', async function () {
             await this.createProduct(this.context);
             expect(this.documentClient.put.calls.argsFor(0)[0].Item).toBe(this.product);

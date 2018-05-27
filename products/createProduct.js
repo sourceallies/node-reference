@@ -16,13 +16,13 @@ module.exports = async function postProduct(ctx) {
     }
 
     product.id = shortid.generate();
-    await saveProduct(product, ctx.segment);
+    product.lastModified = (new Date(Date.now())).toISOString();
+    await saveProduct(product);
     ctx.body = product;
 };
 
-async function saveProduct(product, segment) {
+async function saveProduct(product) {
     return await documentClient.put({
-        Segment: segment,
         TableName: productsTableName,
         Item: product
     }).promise();

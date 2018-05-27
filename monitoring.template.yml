@@ -1,0 +1,61 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: Monitoring dashboards
+Parameters:
+  ProductServiceStackName:
+    Type: String
+    Description: Name of the product service cloudformation stack
+Resources:
+  Dashboard:
+    Type: "AWS::CloudWatch::Dashboard"
+    Properties:
+      DashboardName: "My_Dashboard"
+      DashboardBody:
+        Fn::Sub: 
+          - |
+            {
+              "widgets": [
+                {
+                  "type": "metric",
+                  "width": 24,
+                  "properties": {
+                    "title": "Average Response Time",
+                    "period": 60,
+                    "stat": "p95",
+                    "region": "${AWS::Region}",
+                    "metrics": [
+                      ["AWS/ApplicationELB", "TargetResponseTime", "LoadBalancer", "${ProductServiceLoadBalancerFullName}", {"label": "Product Service"}]
+                    ]
+                  }
+                },
+                {
+                  "type": "metric",
+                  "width": 24,
+                  "properties": {
+                    "title": "Request Counts",
+                    "period": 60,
+                    "stat": "Sum",
+                    "region": "${AWS::Region}",
+                    "metrics": [
+                      ["AWS/ApplicationELB", "RequestCount", "LoadBalancer", "${ProductServiceLoadBalancerFullName}", {"label": "Product Service Requests"}],
+                      ["AWS/ApplicationELB", "HTTPCode_Target_5XX_Count", "LoadBalancer", "${ProductServiceLoadBalancerFullName}", {"label": "Product Service 5xx"}]           
+                    ]
+                  }
+                }
+              ]
+            }
+          - ProductServiceLoadBalancerFullName: 
+              Fn::ImportValue: !Sub "${ProductServiceStackName}:LoadBalancerFullName"
+  EmailAlarmSubscription:
+    Type: "AWS::SNS::Subscription"
+    Properties:
+      TopicArn:
+        Fn::ImportValue: !Sub "${ProductServiceStackName}:AlarmTopicArn"
+      Protocol: email
+      Endpoint: "prowe@sourceallies.com"
+  TxtAlarmSubscription:
+    Type: "AWS::SNS::Subscription"
+    Properties:
+      TopicArn:
+        Fn::ImportValue: !Sub "${ProductServiceStackName}:AlarmTopicArn"
+      Protocol: sms
+      Endpoint: "13098541649"

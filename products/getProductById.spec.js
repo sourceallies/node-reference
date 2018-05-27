@@ -39,13 +39,6 @@ describe('products', function () {
             expect(this.documentClient.get.calls.argsFor(0)[0].Key.id).toEqual('abc');
         });
 
-        it('should pass the current segment to documentClient.get', async function() {
-            const seg = {};
-            this.context.segment = seg;
-            await this.getProductById(this.context);
-            expect(this.documentClient.get.calls.argsFor(0)[0].Segment).toBe(seg);
-        });
-
         it('should return the product', async function () {
             await this.getProductById(this.context);
             expect(this.context.body).toEqual(this.response.Item);

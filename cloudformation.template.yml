@@ -207,15 +207,6 @@ Resources:
       EvaluationPeriods: 1
       AlarmActions:
         - !Ref AlarmTopic
-  DynamoDbDurationMetric:
-    Type: "AWS::Logs::MetricFilter"
-    Properties: 
-      FilterPattern: '{$.metric="DynamoDB.*"}'
-      LogGroupName: !Ref LogGroup
-      MetricTransformations:
-        - MetricNamespace: !Ref AWS::StackName
-          MetricName: DynamoDB_durationMS
-          MetricValue: "$.duration"
 Outputs:
   LoadBalancerDNS:
     Value: !GetAtt LoadBalancer.DNSName

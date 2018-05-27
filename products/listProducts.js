@@ -26,13 +26,11 @@ function addLinkHeaderIfNeeded(ctx, lastEvaluatedKey) {
 }
 
 module.exports = async function getProductList(ctx) {
-    const startTime = process.hrtime();
     const scanOutput = await documentClient.scan({
         TableName: productsTableName,
         Limit: 25,
         ExclusiveStartKey: getExclusiveStartKey(ctx)
     }).promise();
-    console.log(JSON.stringify({metric: 'DynamoDB.listProducts', duration: getElapsedDurationInMs(startTime)}));
 
     addLinkHeaderIfNeeded(ctx, scanOutput.LastEvaluatedKey);
     ctx.body = scanOutput.Items;

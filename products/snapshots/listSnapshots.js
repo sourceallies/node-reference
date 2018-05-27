@@ -25,7 +25,6 @@ function addLinkHeaderIfNeeded(ctx, lastEvaluatedKey) {
 
 module.exports = async function listSnapshots(ctx) {
     const scanOutput = await documentClient.query({
-        Segment: ctx.segment,
         TableName: productsSnapshotTableName,
         Limit: 25,
         ExclusiveStartKey: getExclusiveStartKey(ctx),

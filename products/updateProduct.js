@@ -76,8 +76,8 @@ async function saveProduct(product, lastModified) {
 module.exports = async function(ctx) {
     const id = ctx.params.id;
     const patchDocument = ctx.request.body;
-    const product = await loadProduct(id, ctx.segment);
-    await snapshotProduct({...product}, ctx.segment);
+    const product = await loadProduct(id);
+    await snapshotProduct({...product});
     const lastModified = product.lastModified;
 
     const response = validatePatchDocument(patchDocument) ||

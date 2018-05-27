@@ -41,7 +41,6 @@ describe('products', function () {
             this.context.params.id = 'abc123';
             await this.listSnapshots(this.context);
             const expectedParams = {
-                Segment: undefined,
                 ExclusiveStartKey: undefined,
                 Limit: 25,
                 TableName: 'ProductSnapshots',

@@ -19,14 +19,14 @@
   },
   "homepage": "https://github.com/prowe/node-reference#readme",
   "dependencies": {
-    "aws-sdk": "^2.167.0",
-    "format-link-header": "^2.1.0",
+    "aws-sdk": "^2.247.1",
     "fast-json-patch": "^2.0.6",
+    "format-link-header": "^2.1.0",
     "joi": "^13.1.2",
     "jwks-rsa": "^1.2.1",
     "koa": "^2.4.1",
     "koa-bodyparser": "^4.2.0",
-    "koa-jwt": "^3.3.0",
+    "koa-jwt": "^3.3.2",
     "koa-router": "^7.3.0",
     "shortid": "^2.2.8"
   },

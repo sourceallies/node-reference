@@ -29,6 +29,7 @@ function buildRouter() {
     router.get('/products/:id', require('./products/getProductById'));
     router.delete('/products/:id', require('./products/deleteProduct'));
     router.patch('/products/:id', require('./products/updateProduct'));
+    router.get('/products/:id/snapshots', require('./products/snapshots/listSnapshots'));
     return router;
 }
 

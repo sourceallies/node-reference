@@ -1,6 +1,7 @@
 
 const documentClient = require('./documentClient');
 const validateProduct = require('./validateProduct');
+const snapshotProduct = require('./snapshots/snapshotProduct');
 const jsonPatch = require('fast-json-patch');
 const productsTableName = process.env.PRODUCTS_TABLE_NAME || 'Products';
 
@@ -76,6 +77,7 @@ module.exports = async function(ctx) {
     const id = ctx.params.id;
     const patchDocument = ctx.request.body;
     const product = await loadProduct(id);
+    await snapshotProduct({...product});
     const lastModified = product.lastModified;
 
     const response = validatePatchDocument(patchDocument) ||

@@ -34,9 +34,13 @@ describe('products', function () {
             this.validateProduct = (product) => undefined;
             spyOn(this, 'validateProduct').and.callThrough();
 
+            this.snapshotProduct = (product) => Promise.resolve();
+            spyOn(this, 'snapshotProduct');
+
             this.updateProduct = proxyquire('./updateProduct', {
                 "./documentClient": this.documentClient,
-                './validateProduct': this.validateProduct                
+                './validateProduct': this.validateProduct,
+                './snapshots/snapshotProduct': this.snapshotProduct              
             });
         });
 
@@ -53,6 +57,15 @@ describe('products', function () {
                 }
             };
             expect(this.documentClient.get.calls.argsFor(0)[0]).toEqual(expectedParams);
+        });
+
+        it('should pass the unpatched product to snapshotProduct', async function () {
+            await this.updateProduct(this.context);
+
+            const expectedProduct = {
+                lastModified: '2018-01-02T03:04:05.000Z'
+            };
+            expect(this.snapshotProduct.calls.argsFor(0)[0]).toEqual(expectedProduct);
         });
 
         it('should validate the patched product', async function () {

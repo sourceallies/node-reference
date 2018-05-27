@@ -20,7 +20,8 @@
                 "AWS_ACCESS_KEY_ID": "products",
                 "AWS_SECRET_ACCESS_KEY": "fake-secret",
                 "ENDPOINT": "http://localhost:8000",
-                "PRODUCTS_TABLE_NAME": "Products"
+                "PRODUCTS_TABLE_NAME": "Products",
+                "PRODUCTS_SNAPSHOT_TABLE_NAME": "Products_Snapshots"
             }
         }
     ]

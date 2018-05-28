@@ -37,10 +37,14 @@ describe('products', function () {
             this.snapshotProduct = (product) => Promise.resolve();
             spyOn(this, 'snapshotProduct');
 
+            this.broadcastProductEvent = () => Promise.resolve();
+            spyOn(this, 'broadcastProductEvent').and.callThrough();
+
             this.updateProduct = proxyquire('./updateProduct', {
                 "./documentClient": this.documentClient,
                 './validateProduct': this.validateProduct,
-                './snapshots/snapshotProduct': this.snapshotProduct              
+                './snapshots/snapshotProduct': this.snapshotProduct,
+                './broadcastProductEvent': this.broadcastProductEvent                          
             });
         });
 
@@ -93,6 +97,12 @@ describe('products', function () {
             jasmine.clock().mockDate(new Date(Date.UTC(2018, 03, 05, 06, 07, 08, 100)));
             await this.updateProduct(this.context);
             expect(this.documentClient.put.calls.argsFor(0)[0].Item.lastModified).toEqual('2018-04-05T06:07:08.100Z');
+        });
+
+        it('should call broadcastProductEvent with the id', async function() {
+            this.getResponse.Item.id = 'abc';
+            await this.updateProduct(this.context);
+            expect(this.broadcastProductEvent).toHaveBeenCalledWith('abc');
         });
 
         it('should be a conditional update', async function () {

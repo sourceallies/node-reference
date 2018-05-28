@@ -2,6 +2,7 @@
 const documentClient = require('./documentClient');
 const validateProduct = require('./validateProduct');
 const snapshotProduct = require('./snapshots/snapshotProduct');
+const broadcastProductEvent = require('./broadcastProductEvent');
 const jsonPatch = require('fast-json-patch');
 const productsTableName = process.env.PRODUCTS_TABLE_NAME || 'Products';
 
@@ -67,6 +68,7 @@ async function saveProduct(product, lastModified) {
         throw e;
     }
 
+    await broadcastProductEvent(product.id);
     return {
         status: 200,
         body: product

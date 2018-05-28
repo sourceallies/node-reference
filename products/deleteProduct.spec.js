@@ -22,8 +22,12 @@ describe('products', function () {
             };
             spyOn(this.documentClient, 'delete').and.callThrough();
 
+            this.broadcastProductEvent = () => Promise.resolve();
+            spyOn(this, 'broadcastProductEvent').and.callThrough();
+
             this.deleteProduct = proxyquire('./deleteProduct', {
-                "./documentClient": this.documentClient
+                "./documentClient": this.documentClient,
+                './broadcastProductEvent': this.broadcastProductEvent                
             });
         });
 
@@ -36,6 +40,12 @@ describe('products', function () {
             this.context.params.id = 'abc';
             await this.deleteProduct(this.context);
             expect(this.documentClient.delete.calls.argsFor(0)[0].Key.id).toEqual('abc');
+        });
+
+        it('should call broadcastProductEvent with the id', async function() {
+            this.context.params.id = 'abc';
+            await this.deleteProduct(this.context);
+            expect(this.broadcastProductEvent).toHaveBeenCalledWith('abc');
         });
 
         it('should set the status to 204 (no content)', async function (){

@@ -1,6 +1,7 @@
 'use strict';
 
 const documentClient = require('./documentClient');
+const broadcastProductEvent = require('./broadcastProductEvent');
 const productsTableName = process.env.PRODUCTS_TABLE_NAME || 'Products';
 
 module.exports = async function(ctx) {
@@ -10,5 +11,6 @@ module.exports = async function(ctx) {
         Key: {id}
     }).promise();
 
+    await broadcastProductEvent(id);    
     ctx.status = 204;
 };

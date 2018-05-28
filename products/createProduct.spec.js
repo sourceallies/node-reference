@@ -18,6 +18,9 @@ describe('products', function () {
             this.validateProduct = (product) => undefined;
             spyOn(this, 'validateProduct').and.callThrough();
 
+            this.broadcastProductEvent = () => Promise.resolve();
+            spyOn(this, 'broadcastProductEvent').and.callThrough();
+
             this.awsResult = {
                 promise: () => Promise.resolve()
             };
@@ -29,6 +32,7 @@ describe('products', function () {
             this.createProduct = proxyquire('./createProduct', {
                 "./documentClient": this.documentClient,
                 './validateProduct': this.validateProduct,
+                './broadcastProductEvent': this.broadcastProductEvent
             });
         });
 
@@ -60,6 +64,12 @@ describe('products', function () {
             jasmine.clock().mockDate(new Date(Date.UTC(2018, 03, 05, 06, 07, 08, 100)));
             await this.createProduct(this.context);
             expect(this.documentClient.put.calls.argsFor(0)[0].Item.lastModified).toEqual('2018-04-05T06:07:08.100Z');
+        });
+
+        it('should call broadcastProductEvent with the id', async function() {
+            await this.createProduct(this.context);
+            const id = this.documentClient.put.calls.argsFor(0)[0].Item.id;
+            expect(this.broadcastProductEvent).toHaveBeenCalledWith(id);
         });
 
         it('should return validation errors as the body if validation fails', async function(){

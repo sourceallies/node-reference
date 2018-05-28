@@ -2,6 +2,7 @@
 
 const documentClient = require('./documentClient');
 const validateProduct = require('./validateProduct');
+const broadcastProductEvent = require('./broadcastProductEvent');
 const shortid = require('shortid');
 const productsTableName = process.env.PRODUCTS_TABLE_NAME || 'Products';
 
@@ -18,6 +19,7 @@ module.exports = async function postProduct(ctx) {
     product.id = shortid.generate();
     product.lastModified = (new Date(Date.now())).toISOString();
     await saveProduct(product);
+    await broadcastProductEvent(product.id);    
     ctx.body = product;
 };
 

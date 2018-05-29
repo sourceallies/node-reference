@@ -133,6 +133,8 @@ Resources:
         AwsvpcConfiguration:
           AssignPublicIp: ENABLED
           Subnets: !Ref SubnetIds
+          SecurityGroups:
+            - !Ref AppSG
   LoadBalancerSG:
     Type: "AWS::EC2::SecurityGroup"
     Properties:
@@ -147,17 +149,17 @@ Resources:
           CidrIp: "0.0.0.0/0"
           FromPort: 443
           ToPort: 443
-  LoadBalancerToAppAccess:
-    Type: "AWS::EC2::SecurityGroupIngress"
+  AppSG: #This security group holds the application
+    Type: "AWS::EC2::SecurityGroup"
     Properties:
-      SourceSecurityGroupId: !Ref LoadBalancerSG
-      IpProtocol: "tcp"
-      FromPort: 1
-      ToPort: 65000
-      GroupName: "default"
+      GroupDescription: "Application security group"
+      VpcId: !Ref VpcId 
+      SecurityGroupIngress:
+        - IpProtocol: "tcp"
+          SourceSecurityGroupId: !Ref LoadBalancerSG
+          FromPort: 1
+          ToPort: 65000
   LoadBalancer:
-    DependsOn: 
-      - LoadBalancerToAppAccess
     Type: AWS::ElasticLoadBalancingV2::LoadBalancer
     Properties:
       Scheme: internet-facing

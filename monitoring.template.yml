@@ -4,6 +4,9 @@ Parameters:
   ProductServiceStackName:
     Type: String
     Description: Name of the product service cloudformation stack
+  AlarmEmail:
+    Type: String
+    Description: Email address that should be alerted of Alarms
 Resources:
   Dashboard:
     Type: "AWS::CloudWatch::Dashboard"
@@ -45,17 +48,29 @@ Resources:
             }
           - ProductServiceLoadBalancerFullName: 
               Fn::ImportValue: !Sub "${ProductServiceStackName}:LoadBalancerFullName"
+  AlarmTopic: 
+    Type: "AWS::SNS::Topic"
+    Properties: {}
+  ProductServiceResponseTimeAlarm:
+    Type: "AWS::CloudWatch::Alarm"
+    Properties:
+      Namespace: "AWS/ApplicationELB"
+      MetricName: "TargetResponseTime"
+      Dimensions:
+        - Name: "LoadBalancer"
+          Value: 
+            Fn::ImportValue: !Sub "${ProductServiceStackName}:LoadBalancerFullName"
+      ExtendedStatistic: p95
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      Threshold: 100
+      Period: 60
+      EvaluationPeriods: 1
+      AlarmActions:
+        - !Ref AlarmTopic
   EmailAlarmSubscription:
     Type: "AWS::SNS::Subscription"
     Properties:
       TopicArn:
         Fn::ImportValue: !Sub "${ProductServiceStackName}:AlarmTopicArn"
       Protocol: email
-      Endpoint: "prowe@sourceallies.com"
-  TxtAlarmSubscription:
-    Type: "AWS::SNS::Subscription"
-    Properties:
-      TopicArn:
-        Fn::ImportValue: !Sub "${ProductServiceStackName}:AlarmTopicArn"
-      Protocol: sms
-      Endpoint: "13098541649"
+      Endpoint: !Ref AlarmEmail

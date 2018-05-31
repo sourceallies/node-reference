@@ -214,24 +214,6 @@ Resources:
       AliasTarget:
         HostedZoneId: !GetAtt "LoadBalancer.CanonicalHostedZoneID"
         DNSName: !GetAtt "LoadBalancer.DNSName"
-  AlarmTopic: 
-    Type: "AWS::SNS::Topic"
-    Properties: {}
-  SlowResponseTimeAlarm:
-    Type: "AWS::CloudWatch::Alarm"
-    Properties:
-      Namespace: "AWS/ApplicationELB"
-      MetricName: "TargetResponseTime"
-      Dimensions:
-        - Name: "LoadBalancer"
-          Value: !GetAtt "LoadBalancer.LoadBalancerFullName"
-      ExtendedStatistic: p95
-      ComparisonOperator: GreaterThanOrEqualToThreshold
-      Threshold: 100
-      Period: 60
-      EvaluationPeriods: 1
-      AlarmActions:
-        - !Ref AlarmTopic
 Outputs:
   LoadBalancerDNS:
     Value: !GetAtt LoadBalancer.DNSName
@@ -239,7 +221,3 @@ Outputs:
     Value: !GetAtt LoadBalancer.LoadBalancerFullName
     Export:
       Name: !Sub "${AWS::StackName}:LoadBalancerFullName"
-  AlarmTopicArn:
-    Value: !Ref AlarmTopic
-    Export:
-      Name: !Sub "${AWS::StackName}:AlarmTopicArn"

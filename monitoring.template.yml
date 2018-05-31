@@ -67,10 +67,25 @@ Resources:
       EvaluationPeriods: 1
       AlarmActions:
         - !Ref AlarmTopic
+  ProductServiceErrorAlarm:
+    Type: "AWS::CloudWatch::Alarm"
+    Properties:
+      Namespace: "AWS/ApplicationELB"
+      MetricName: "HTTPCode_Target_5XX_Count"
+      Dimensions:
+        - Name: "LoadBalancer"
+          Value: 
+            Fn::ImportValue: !Sub "${ProductServiceStackName}:LoadBalancerFullName"
+      Statistic: Sum
+      ComparisonOperator: GreaterThanThreshold
+      Threshold: 0
+      Period: 60
+      EvaluationPeriods: 1
+      AlarmActions:
+        - !Ref AlarmTopic
   EmailAlarmSubscription:
     Type: "AWS::SNS::Subscription"
     Properties:
-      TopicArn:
-        Fn::ImportValue: !Sub "${ProductServiceStackName}:AlarmTopicArn"
+      TopicArn: !AlarmTopic
       Protocol: email
       Endpoint: !Ref AlarmEmail

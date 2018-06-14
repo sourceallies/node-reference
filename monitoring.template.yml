@@ -62,7 +62,7 @@ Resources:
             Fn::ImportValue: !Sub "${ProductServiceStackName}:LoadBalancerFullName"
       ExtendedStatistic: p95
       ComparisonOperator: GreaterThanOrEqualToThreshold
-      Threshold: 100
+      Threshold: 0.1
       Period: 60
       EvaluationPeriods: 1
       AlarmActions:

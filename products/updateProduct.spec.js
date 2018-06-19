@@ -20,7 +20,7 @@ describe('products', function () {
                     lastModified: '2018-01-02T03:04:05.000Z'
                 }
             };
-            this.documentClient = {
+            const documentClient = this.documentClient ={
                 get: () => ({
                     promise: () => Promise.resolve(this.getResponse)
                 }),
@@ -41,7 +41,13 @@ describe('products', function () {
             spyOn(this, 'broadcastProductEvent').and.callThrough();
 
             this.updateProduct = proxyquire('./updateProduct', {
-                "./documentClient": this.documentClient,
+                'aws-sdk': {
+                    DynamoDB: {
+                        DocumentClient: function() {
+                            return documentClient;
+                        }
+                    }
+                },
                 './validateProduct': this.validateProduct,
                 './snapshots/snapshotProduct': this.snapshotProduct,
                 './broadcastProductEvent': this.broadcastProductEvent                          

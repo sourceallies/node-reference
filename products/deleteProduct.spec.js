@@ -17,7 +17,7 @@ describe('products', function () {
             this.awsResult = {
                 promise: () => Promise.resolve(this.response)
             };
-            this.documentClient = {
+            const documentClient = this.documentClient ={
                 delete: (params) => this.awsResult
             };
             spyOn(this.documentClient, 'delete').and.callThrough();
@@ -26,7 +26,13 @@ describe('products', function () {
             spyOn(this, 'broadcastProductEvent').and.callThrough();
 
             this.deleteProduct = proxyquire('./deleteProduct', {
-                "./documentClient": this.documentClient,
+                'aws-sdk': {
+                    DynamoDB: {
+                        DocumentClient: function() {
+                            return documentClient;
+                        }
+                    }
+                },
                 './broadcastProductEvent': this.broadcastProductEvent                
             });
         });

@@ -1,6 +1,7 @@
 'use strict';
 
-const documentClient = require('./documentClient');
+const AWS = require('aws-sdk');
+const documentClient = new AWS.DynamoDB.DocumentClient();
 const broadcastProductEvent = require('./broadcastProductEvent');
 const productsTableName = process.env.PRODUCTS_TABLE_NAME || 'Products';
 

@@ -12,13 +12,19 @@ describe('products', function () {
             this.awsResult = {
                 promise: () => Promise.resolve()
             };
-            this.documentClient = {
+            const documentClient = this.documentClient ={
                 put: (params) => this.awsResult
             };
             spyOn(this.documentClient, 'put').and.callThrough();
 
             this.snapshotProduct = proxyquire('./snapshotProduct', {
-                "../documentClient": this.documentClient
+                'aws-sdk': {
+                    DynamoDB: {
+                        DocumentClient: function() {
+                            return documentClient;
+                        }
+                    }
+                }
             });
         });
 

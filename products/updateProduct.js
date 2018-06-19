@@ -1,5 +1,6 @@
 
-const documentClient = require('./documentClient');
+const AWS = require('aws-sdk');
+const documentClient = new AWS.DynamoDB.DocumentClient();
 const validateProduct = require('./validateProduct');
 const snapshotProduct = require('./snapshots/snapshotProduct');
 const broadcastProductEvent = require('./broadcastProductEvent');

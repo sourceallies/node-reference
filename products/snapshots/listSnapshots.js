@@ -1,5 +1,6 @@
 
-const documentClient = require('../documentClient');
+const AWS = require('aws-sdk');
+const documentClient = new AWS.DynamoDB.DocumentClient();
 const formatLinkHeader = require('format-link-header');
 const productsSnapshotTableName = process.env.PRODUCTS_SNAPSHOT_TABLE_NAME;
 

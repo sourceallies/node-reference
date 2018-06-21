@@ -120,6 +120,7 @@ Resources:
     Type: AWS::ECS::Service
     DependsOn: 
       - LoadBalancer
+      - LBListener
     Properties: 
       Cluster: !Ref ECSCluster
       LaunchType: FARGATE

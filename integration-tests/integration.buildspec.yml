@@ -9,4 +9,4 @@ phases:
   build:
     commands:
       - echo "About to exec $RELEASE_IMAGE_URL to $BASE_URL"
-      - docker run -e BASE_URL=$BASE_URL $RELEASE_IMAGE_URL npm run integration-tests
+      - docker run -e BASE_URL=$BASE_URL $RELEASE_IMAGE_URL npm run integration-test

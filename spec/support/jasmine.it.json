@@ -1,5 +1,0 @@
-{
-    "spec_files": [
-        "products/**/*.it.js"
-    ]
-}

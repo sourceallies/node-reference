@@ -6,7 +6,7 @@
   "scripts": {
     "start": "node server.js",
     "test": "jasmine",
-    "integration-test": "jasmine JASMINE_CONFIG_PATH=spec/support/jasmine.it.json"
+    "integration-test": "jasmine JASMINE_CONFIG_PATH=integration-tests/jasmine.it.json"
   },
   "repository": {
     "type": "git",

@@ -4,8 +4,9 @@ env:
 phases:
   pre_build:
     commands:
-      - export RELEASE_IMAGE_URL="$DOCKER_IMAGE_URL:$CODEBUILD_RESOLVED_SOURCE_VERSION"
       - $(aws ecr get-login --no-include-email --region $AWS_DEFAULT_REGION)
+      - export RELEASE_IMAGE_URL="$DOCKER_IMAGE_URL:$CODEBUILD_RESOLVED_SOURCE_VERSION"
   build:
     commands:
-      - echo "About to exec: $RELEASE_IMAGE_URL"
+      - echo "About to exec $RELEASE_IMAGE_URL"
+      - docker run -it -e BASE_URL $RELEASE_IMAGE_URL npm run integration-tests

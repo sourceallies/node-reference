@@ -8,5 +8,5 @@ phases:
       - export RELEASE_IMAGE_URL="$DOCKER_IMAGE_URL:$CODEBUILD_RESOLVED_SOURCE_VERSION"
   build:
     commands:
-      - echo "About to exec $RELEASE_IMAGE_URL"
-      - docker run -e BASE_URL $RELEASE_IMAGE_URL npm run integration-tests
+      - echo "About to exec $RELEASE_IMAGE_URL to $BASE_URL"
+      - docker run -e BASE_URL=$BASE_URL $RELEASE_IMAGE_URL npm run integration-tests

@@ -9,6 +9,7 @@ phases:
     commands:
       - docker build --tag "$RELEASE_IMAGE_URL" .
       - sed -i '' "s/RELEASE_IMAGE_URL/$RELEASE_IMAGE_URL/" parameters/*.params.json
+      - echo $RELEASE_IMAGE_URL > RELEASE_IMAGE_URL.txt
       - |
         cat <<EOF > outputProperties.json
         {
@@ -22,6 +23,7 @@ artifacts:
   discard-paths: yes
   files:
     - "cloudformation.template.yml"
+    - "RELEASE_IMAGE_URL.txt"
     - "outputProperties.json"
     - "parameters/*"
     - "integration-tests/integration.buildspec.yml"

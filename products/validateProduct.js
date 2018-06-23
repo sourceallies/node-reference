@@ -15,6 +15,10 @@ const schema = Joi.object({
 
 const options = {
     abortEarly: false,
+    allowUnknown: true,
+    stripUnknown: {
+        objects: true
+    }
 };
 
 module.exports = function validateProduct(product) {

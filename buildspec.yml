@@ -8,7 +8,7 @@ phases:
   build:
     commands:
       - docker build --tag "$RELEASE_IMAGE_URL" .
-      - sed -i '' "s|RELEASE_IMAGE_URL|${RELEASE_IMAGE_URL}|" parameters/*.params.json
+      - sed --in-place='bak' --expression="s|RELEASE_IMAGE_URL|${RELEASE_IMAGE_URL}|" parameters/*.params.json
       - echo $RELEASE_IMAGE_URL > RELEASE_IMAGE_URL.txt
       - |
         cat <<EOF > outputProperties.json

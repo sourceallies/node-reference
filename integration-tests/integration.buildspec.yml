@@ -6,6 +6,7 @@ phases:
     commands:
       - $(aws ecr get-login --no-include-email --region $AWS_DEFAULT_REGION)
       - export RELEASE_IMAGE_URL="$DOCKER_IMAGE_URL:$CODEBUILD_RESOLVED_SOURCE_VERSION"
+      - ls -l
   build:
     commands:
       - echo "About to exec $RELEASE_IMAGE_URL to $BASE_URL"

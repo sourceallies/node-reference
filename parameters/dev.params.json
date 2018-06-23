@@ -4,6 +4,6 @@
         "SubnetIds": "subnet-7d6d270b,subnet-d897febd,subnet-ef42c9e3,subnet-1fd84335,subnet-dd1a49e0,subnet-a0fa9bf8",
         "Subdomain": "prowe-products",
         "BaseDomain": "dev.sourceallies.com",
-        "Image": "IMAGE_URL"
+        "Image": "RELEASE_IMAGE_URL"
     }
 }

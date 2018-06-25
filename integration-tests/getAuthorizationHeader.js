@@ -18,8 +18,8 @@ async function buildTokenAuthHeader() {
 }
 
 module.exports = async function getAuthHeader() {
-    console.log('env:', JSON.stringify(process.env, null, '  '));
-    
+    //console.log('env:', JSON.stringify(process.env, null, '  '));
+
     const response = await fetch(process.env.TOKEN_ENDPOINT, {
         method: 'POST',
         body: 'grant_type=client_credentials',

@@ -10,6 +10,8 @@ describe('/products', function() {
             this.baseURL = process.env.BASE_URL || 'http://localhost:3000';
             // const authHeader = await getAuthorizationHeader();
             
+            console.log(process.env.BASE_URL, process.env.CLIENT_ID, process.env.ENCRYPTED_CLIENT_SECRET, process.env.TOKEN_ENDPOINT);
+
             const product = {
                 name: 'test product',
                 imageURL: 'http://example.com/image.jpg'

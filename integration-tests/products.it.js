@@ -1,23 +1,12 @@
+
 const fetch = require('node-fetch');
 const url = require('url');
+const getAuthorizationHeader = require('./getAuthorizationHeader');
 
 describe('/products', function() {
     describe('saving a product', function() {
         beforeAll(async function() {
             this.baseURL = process.env.BASE_URL || 'http://localhost:3000';
-    
-            // let client_id = 'avg0fvfjnfqlhdst57ibrgbi4';
-            // let client_secret = '1dgf6295bp6onh5jg34re0sa6n2v0i5rlnac4ihiblfrcdfj8dvr';
-            // let encodedClientCredentials = new Buffer(`${client_id}:${client_secret}`).toString('base64');
-            // const tokenBody = await fetch('https://prowe-products.auth.us-east-1.amazoncognito.com/oauth2/token', {
-            //     method: 'POST',
-            //     body: 'grant_type=client_credentials',
-            //     headers: {
-            //         'Authorization': `Basic ${encodedClientCredentials}`,
-            //         'Content-Type': 'application/x-www-form-urlencoded'
-            //     }
-            // }).then(r => r.json());
-            // this.authHeader = `Bearer ${tokenBody.access_token}`;
     
             const product = {
                 name: 'test product',
@@ -28,7 +17,7 @@ describe('/products', function() {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'Authorization': this.authHeader
+                    'Authorization': await getAuthorizationHeader()
                 },
                 body: JSON.stringify(product)
             });

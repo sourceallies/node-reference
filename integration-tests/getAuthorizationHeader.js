@@ -6,6 +6,7 @@ async function getDecryptedClientSecret() {
     const result = await kms.decrypt({
         CiphertextBlob: Buffer.from(process.env.ENCRYPTED_CLIENT_SECRET, 'base64')
     }).promise();
+    console.log('Get Secret response: ', result);
     return result.Plaintext.toString().trim();
 }
 
@@ -26,5 +27,6 @@ module.exports = async function getAuthHeader() {
         }
     });
     const responseBody = await response.json();
+    console.log('Get Token response: ', responseBody);
     return `Bearer ${responseBody.access_token}`;
 };

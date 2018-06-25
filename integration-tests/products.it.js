@@ -2,6 +2,7 @@
 const fetch = require('node-fetch');
 const url = require('url');
 const getAuthorizationHeader = require('./getAuthorizationHeader');
+jasmine.DEFAULT_TIMEOUT_INTERVAL = 30000;
 
 describe('/products', function() {
     describe('saving a product', function() {

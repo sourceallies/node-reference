@@ -8,8 +8,7 @@ describe('/products', function() {
     describe('saving a product', function() {
         beforeAll(async function createNewProduct() {
             this.baseURL = process.env.BASE_URL || 'http://localhost:3000';
-            try {
-            const authHeader = await getAuthorizationHeader();
+            // const authHeader = await getAuthorizationHeader();
             
             const product = {
                 name: 'test product',
@@ -20,16 +19,12 @@ describe('/products', function() {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'Authorization': authHeader
+                    'Authorization': undefined //sauthHeader
                 },
                 body: JSON.stringify(product)
             });
             this.responseBody = this.response.ok && await this.response.json();
             console.log('Response ', this.responseBody);
-        } catch(e) {
-            console.error("error", e);
-            throw e;
-        }
         });
 
         it('should return an ok status code', function() {

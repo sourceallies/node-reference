@@ -10,4 +10,10 @@ phases:
   build:
     commands:
       - echo "About to exec $RELEASE_IMAGE_URL to $BASE_URL"
-      - docker run -e BASE_URL -e CLIENT_ID -e ENCRYPTED_CLIENT_SECRET -e TOKEN_ENDPOINT $RELEASE_IMAGE_URL npm run integration-test
+      - |
+        docker run \
+          -e BASE_URL=$BASE_URL \
+          -e CLIENT_ID=$CLIENT_ID \
+          -e ENCRYPTED_CLIENT_SECRET=$ENCRYPTED_CLIENT_SECRET \
+          -e TOKEN_ENDPOINT=$TOKEN_ENDPOINT \
+          $RELEASE_IMAGE_URL npm run integration-test

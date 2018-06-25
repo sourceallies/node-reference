@@ -7,7 +7,8 @@ describe('/products', function() {
     describe('saving a product', function() {
         beforeAll(async function() {
             this.baseURL = process.env.BASE_URL || 'http://localhost:3000';
-    
+            const authHeader = await getAuthorizationHeader();
+            
             const product = {
                 name: 'test product',
                 imageURL: 'http://example.com/image.jpg'
@@ -17,7 +18,7 @@ describe('/products', function() {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'Authorization': await getAuthorizationHeader()
+                    'Authorization': authHeader
                 },
                 body: JSON.stringify(product)
             });

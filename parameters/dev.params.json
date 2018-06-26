@@ -4,6 +4,6 @@
         "SubnetIds": "subnet-7d6d270b,subnet-d897febd,subnet-ef42c9e3,subnet-1fd84335,subnet-dd1a49e0,subnet-a0fa9bf8",
         "Subdomain": "prowe-products",
         "BaseDomain": "dev.sourceallies.com",
-        "Image": "729161019481.dkr.ecr.us-east-1.amazonaws.com/prowe-docke-johrhohr2wu9:b3639d3c3d0b437af891490b87f3601eafdc8851"
+        "Image": "RELEASE_IMAGE_URL"
     }
 }

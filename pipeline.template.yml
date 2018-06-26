@@ -201,7 +201,7 @@ Resources:
           - Name: IntegrationTest
             RunOrder: 2
             ActionTypeId:
-              Category: Build
+              Category: Test
               Owner: AWS
               Provider: CodeBuild
               Version: 1

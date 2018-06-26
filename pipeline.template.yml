@@ -5,6 +5,11 @@ Parameters:
     Type: String
     NoEcho: true
     Description: OAuth Token for the github repository
+  PipelineAdminArn:
+    Type: String
+    Description: |
+      ARN of a user or role that can administrate this pipeline.
+      This can be obtained by running aws sts get-caller-identity --query='Arn' --output=text
 Resources:
   PipelineRole:
     Type: "AWS::IAM::Role"
@@ -29,6 +34,38 @@ Resources:
         - "arn:aws:iam::aws:policy/AdministratorAccess"
   ArtifactStorage:
     Type: "AWS::S3::Bucket"
+  PipelineKey:
+    Type: "AWS::KMS::Key"
+    Properties:
+      KeyPolicy:
+        Version: "2012-10-17"
+        Statement: 
+          - Sid: "Allow administration of the key"
+            Effect: "Allow"
+            Principal: 
+              AWS: !Ref PipelineAdminArn
+            Action: 
+              - "kms:*"
+            Resource: "*"
+          - Sid: "Allow use of the key"
+            Effect: "Allow"
+            Principal: 
+              AWS: !GetAtt PipelineRole.Arn
+            Action: 
+              - "kms:Decrypt"
+            Resource: "*"
+          - Sid: "Allow Encryption by everyone"
+            Effect: "Allow"
+            Principal: 
+              AWS: "*"
+            Action: 
+              - "kms:Encrypt"
+            Resource: "*"
+  PipelineKeyAlias:
+    Type: "AWS::KMS::Alias"
+    Properties:
+      AliasName: !Sub "alias/${AWS::StackName}-key"
+      TargetKeyId: !Ref PipelineKey
   ArtifactStoragePolicy:
     Type: "AWS::S3::BucketPolicy"
     Properties:
@@ -71,6 +108,30 @@ Resources:
         EnvironmentVariables:
           - Name: DOCKER_IMAGE_URL
             Value: !Sub "${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/${DockerRepo}"
+      Artifacts:
+        Type: CODEPIPELINE
+  IntegrationTest:
+    Type: AWS::CodeBuild::Project
+    DependsOn:
+      - PipelineRole
+    Properties:
+      ServiceRole: !GetAtt PipelineRole.Arn
+      Source:
+        Type: CODEPIPELINE
+        BuildSpec: integration.buildspec.yml
+      Environment:
+        Type: LINUX_CONTAINER
+        ComputeType: BUILD_GENERAL1_SMALL
+        Image: aws/codebuild/docker:17.09.0
+        EnvironmentVariables:
+          - Name: BASE_URL
+            Value: "https://prowe-products.dev.sourceallies.com/"
+          - Name: CLIENT_ID
+            Value: "4c8mmtv4fsrlomvt2k209u3fui"
+          - Name: ENCRYPTED_CLIENT_SECRET
+            Value: "AQICAHiZgD/jeR0oOREQtYJrh9wib6dOVY7T9VTN4zxzBZQ09gE53bazErDBAxwCkntFIQZuAAAAljCBkwYJKoZIhvcNAQcGoIGFMIGCAgEAMH0GCSqGSIb3DQEHATAeBglghkgBZQMEAS4wEQQM+yeBckRCM5xy85sQAgEQgFCPKABigjlatrQ9uScjAyL9c5n0zEmComzaHnF6f354wmQfF4YwdHd+95/iTEB113oJnA3GMQ/dC0DUg2YC8MdBg+HGF4H83LcAJCfPCv87qg=="
+          - Name: TOKEN_ENDPOINT
+            Value: "https://proucts.auth.us-east-1.amazoncognito.com/oauth2/token"
       Artifacts:
         Type: CODEPIPELINE
   Pipeline:
@@ -116,6 +177,7 @@ Resources:
         - Name: Deploy_DEV
           Actions:
           - Name: Deploy
+            RunOrder: 1
             RoleArn: !GetAtt PipelineRole.Arn
             ActionTypeId:
               Category: Deploy
@@ -136,3 +198,14 @@ Resources:
                   "SubnetIds": "subnet-5d24b151,subnet-c5c9fded,subnet-aca64cdb,subnet-2fb7df4a,subnet-62d9cd24,subnet-a8e18192",
                   "Image": { "Fn::GetParam" : [ "buildResults", "outputProperties.json", "image" ] }
                 }
+          - Name: IntegrationTest
+            RunOrder: 2
+            ActionTypeId:
+              Category: Build
+              Owner: AWS
+              Provider: CodeBuild
+              Version: 1
+            InputArtifacts:
+              - Name: buildResults
+            Configuration:
+              ProjectName: !Ref IntegrationTest

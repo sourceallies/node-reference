@@ -6,17 +6,15 @@ phases:
     commands:
       - $(aws ecr get-login --no-include-email --region $AWS_DEFAULT_REGION)
       - export RELEASE_IMAGE_URL=$(cat RELEASE_IMAGE_URL.txt)
-      - ls -l
   build:
     commands:
-      - export
       - echo "About to exec $RELEASE_IMAGE_URL to $BASE_URL"
       - |
         docker run \
           -e AWS_REGION=$AWS_DEFAULT_REGION \
           -e AWS_CONTAINER_CREDENTIALS_RELATIVE_URI \
-          -e BASE_URL=$BASE_URL \
-          -e CLIENT_ID=$CLIENT_ID \
-          -e ENCRYPTED_CLIENT_SECRET=$ENCRYPTED_CLIENT_SECRET \
-          -e TOKEN_ENDPOINT=$TOKEN_ENDPOINT \
+          -e BASE_URL \
+          -e CLIENT_ID \
+          -e ENCRYPTED_CLIENT_SECRET \
+          -e TOKEN_ENDPOINT \
           $RELEASE_IMAGE_URL npm run integration-test

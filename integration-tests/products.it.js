@@ -2,13 +2,11 @@
 const fetch = require('node-fetch');
 const url = require('url');
 const getAuthorizationHeader = require('./getAuthorizationHeader');
-jasmine.DEFAULT_TIMEOUT_INTERVAL = 30000;
 
 describe('/products', function() {
     describe('saving a product', function() {
         beforeAll(async function createNewProduct() {
             this.baseURL = process.env.BASE_URL || 'http://localhost:3000';
-            console.log(process.env.BASE_URL, process.env.CLIENT_ID, process.env.ENCRYPTED_CLIENT_SECRET, process.env.TOKEN_ENDPOINT);
             const authHeader = await getAuthorizationHeader();
 
             const product = {

@@ -61,6 +61,9 @@ Resources:
             Action: 
               - "kms:Encrypt"
             Resource: "*"
+            Condition:
+              StringEquals:
+                "kms:CallerAccount": !Ref "AWS::AccountId"
   PipelineKeyAlias:
     Type: "AWS::KMS::Alias"
     Properties:

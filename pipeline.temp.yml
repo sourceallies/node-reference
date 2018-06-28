@@ -1,5 +1,5 @@
 AWSTemplateFormatVersion: "2010-09-09"
-Description: Pipeline for node-reference
+Description: Pipeline for prowe node-reference (delete after June 2018)
 Parameters:
   RepoToken:
     Type: String
@@ -104,7 +104,7 @@ Resources:
       Environment:
         Type: LINUX_CONTAINER
         ComputeType: BUILD_GENERAL1_SMALL
-        Image: aws/codebuild/docker:1.12.1
+        Image: aws/codebuild/docker:17.09.0
         EnvironmentVariables:
           - Name: DOCKER_IMAGE_URL
             Value: !Sub "${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/${DockerRepo}"
@@ -131,7 +131,7 @@ Resources:
           - Name: ENCRYPTED_CLIENT_SECRET
             Value: "AQICAHiZgD/jeR0oOREQtYJrh9wib6dOVY7T9VTN4zxzBZQ09gE53bazErDBAxwCkntFIQZuAAAAljCBkwYJKoZIhvcNAQcGoIGFMIGCAgEAMH0GCSqGSIb3DQEHATAeBglghkgBZQMEAS4wEQQM+yeBckRCM5xy85sQAgEQgFCPKABigjlatrQ9uScjAyL9c5n0zEmComzaHnF6f354wmQfF4YwdHd+95/iTEB113oJnA3GMQ/dC0DUg2YC8MdBg+HGF4H83LcAJCfPCv87qg=="
           - Name: TOKEN_ENDPOINT
-            Value: "https://proucts.auth.us-east-1.amazoncognito.com/oauth2/token"
+            Value: "https://proweintegrationtest.auth.us-east-1.amazoncognito.com/oauth2/token"
       Artifacts:
         Type: CODEPIPELINE
   Pipeline:
@@ -156,9 +156,9 @@ Resources:
             OutputArtifacts:
               - Name: sourceCode
             Configuration:
-              Owner: "prowe"
+              Owner: "sourceallies"
               Repo: "node-reference"
-              Branch: master
+              Branch: acc-tests
               OAuthToken: !Ref RepoToken
         - Name: Build
           Actions:
@@ -187,9 +187,20 @@ Resources:
             InputArtifacts:
               - Name: buildResults
             Configuration:
-              StackName: ProductService
+              StackName: prowe-node-reference
               ActionMode: REPLACE_ON_FAILURE
+              RoleArn: !GetAtt PipelineRole.Arn
               TemplatePath: buildResults::cloudformation.template.yml
               TemplateConfiguration: buildResults::dev.params.json
-              RoleArn: !GetAtt PipelineRole.Arn
               Capabilities: CAPABILITY_IAM
+          - Name: IntegrationTest
+            RunOrder: 2
+            ActionTypeId:
+              Category: Test
+              Owner: AWS
+              Provider: CodeBuild
+              Version: 1
+            InputArtifacts:
+              - Name: buildResults
+            Configuration:
+              ProjectName: !Ref IntegrationTest

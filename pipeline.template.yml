@@ -193,3 +193,14 @@ Resources:
               TemplateConfiguration: buildResults::dev.params.json
               RoleArn: !GetAtt PipelineRole.Arn
               Capabilities: CAPABILITY_IAM
+          - Name: IntegrationTest
+            RunOrder: 2
+            ActionTypeId:
+              Category: Test
+              Owner: AWS
+              Provider: CodeBuild
+              Version: 1
+            InputArtifacts:
+              - Name: buildResults
+            Configuration:
+              ProjectName: !Ref IntegrationTest

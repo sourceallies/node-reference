@@ -8,17 +8,11 @@ phases:
   build:
     commands:
       - docker build --tag "$RELEASE_IMAGE_URL" .
-      - |
-        cat <<EOF > outputProperties.json
-        {
-          "image": "$RELEASE_IMAGE_URL", 
-          "version": "$CODEBUILD_RESOLVED_SOURCE_VERSION"
-        }
-        EOF
-      - $(aws ecr get-login)
+      - sed --in-place='bak' --expression="s|RELEASE_IMAGE_URL|${RELEASE_IMAGE_URL}|" parameters/*.params.json
+      - $(aws ecr get-login --no-include-email --region $AWS_DEFAULT_REGION)
       - docker push "$RELEASE_IMAGE_URL"
 artifacts:
   discard-paths: yes
   files:
     - "cloudformation.template.yml"
-    - "outputProperties.json"
+    - "parameters/*"

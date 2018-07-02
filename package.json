@@ -4,7 +4,7 @@
   "description": "Node reference application",
   "main": "server.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "jasmine"
   },
   "repository": {
     "type": "git",
@@ -16,13 +16,16 @@
       "email": "paul@sourceallies.com"
     },
     {
-     "name": "Matt Vincent",
-     "email": "matt@sourceallies.com"
+      "name": "Matt Vincent",
+      "email": "matt@sourceallies.com"
     }
   ],
   "license": "ISC",
   "bugs": {
     "url": "https://github.com/sourceallies/node-reference/issues"
   },
-  "homepage": "https://www.sourceallies.com/2018/07/node-reference-intro/"
+  "homepage": "https://www.sourceallies.com/2018/07/node-reference-intro/",
+  "devDependencies": {
+    "jasmine": "^3.1.0"
+  }
 }

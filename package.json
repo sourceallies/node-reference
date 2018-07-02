@@ -1,0 +1,28 @@
+{
+  "name": "product-service",
+  "version": "1.0.0",
+  "description": "Node reference application",
+  "main": "server.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/sourceallies/node-reference.git"
+  },
+  "contributors": [
+    {
+      "name": "Paul Rowe",
+      "email": "paul@sourceallies.com"
+    },
+    {
+     "name": "Matt Vincent",
+     "email": "matt@sourceallies.com"
+    }
+  ],
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/sourceallies/node-reference/issues"
+  },
+  "homepage": "https://www.sourceallies.com/2018/07/node-reference-intro/"
+}

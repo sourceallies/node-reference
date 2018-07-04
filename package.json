@@ -4,7 +4,8 @@
   "description": "Node reference application",
   "main": "server.js",
   "scripts": {
-    "test": "jasmine"
+    "test": "jasmine",
+    "start": "node server.js"
   },
   "repository": {
     "type": "git",
@@ -26,6 +27,12 @@
   },
   "homepage": "https://www.sourceallies.com/2018/07/node-reference-intro/",
   "devDependencies": {
-    "jasmine": "^3.1.0"
+    "jasmine": "^3.1.0",
+    "proxyquire": "^2.0.1"
+  },
+  "dependencies": {
+    "koa": "^2.5.1",
+    "koa-bodyparser": "^4.2.1",
+    "koa-router": "^7.4.0"
   }
 }

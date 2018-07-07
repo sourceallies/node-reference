@@ -1,0 +1,10 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: Product Service
+Parameters:
+  Image:
+    Type: String
+    Description: Docker image to run
+Resources:
+  ECSCluster:
+    Type: "AWS::ECS::Cluster"
+    Properties: {}

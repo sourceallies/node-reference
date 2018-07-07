@@ -108,3 +108,44 @@ Resources:
               ProjectName: !Ref BuildProject
             OutputArtifacts:
               - Name: buildResults
+        - Name: Deploy_DEV
+          Actions:
+          - Name: Deploy
+            RoleArn: !GetAtt PipelineRole.Arn
+            ActionTypeId:
+              Category: Deploy
+              Owner: AWS
+              Provider: CloudFormation
+              Version: '1'
+            InputArtifacts:
+              - Name: buildResults
+            Configuration:
+              #this is the name of the stack
+              StackName: ProductService-DEV 
+              #becuase this is dev, if the deploy fails on the first create, just destroy it rather than getting stuck in CREATE_FAILED state
+              ActionMode: REPLACE_ON_FAILURE 
+              #this special syntax represents the file we put in our "artifacts" section of the buildspec.yml
+              TemplatePath: buildResults::cloudformation.template.yml
+              TemplateConfiguration: buildResults::dev.params.json
+              RoleArn: !GetAtt PipelineRole.Arn
+              Capabilities: CAPABILITY_IAM
+          #This is the same as the stage above except the StackName, ActionMode and TemplateConfiguration are different
+        - Name: Deploy_PROD
+          Actions:
+          - Name: Deploy
+            RoleArn: !GetAtt PipelineRole.Arn
+            ActionTypeId:
+              Category: Deploy
+              Owner: AWS
+              Provider: CloudFormation
+              Version: '1'
+            InputArtifacts:
+              - Name: buildResults
+            Configuration:
+              StackName: ProductService-PROD 
+              #Create or update the stack, but don't delete it if it fails
+              ActionMode: CREATE_UPDATE 
+              TemplatePath: buildResults::cloudformation.template.yml
+              TemplateConfiguration: buildResults::prod.params.json
+              RoleArn: !GetAtt PipelineRole.Arn
+              Capabilities: CAPABILITY_IAM

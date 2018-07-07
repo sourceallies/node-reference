@@ -8,3 +8,68 @@ Resources:
   ECSCluster:
     Type: "AWS::ECS::Cluster"
     Properties: {}
+  TaskRole:
+  Type: "AWS::IAM::Role"
+  Properties:
+    AssumeRolePolicyDocument:
+      Version: "2012-10-17"
+      Statement:
+        # Allow ECS the ability to assume this role.
+        - Effect: "Allow"
+          Action: "sts:AssumeRole"
+          Principal:
+            Service: "ecs-tasks.amazonaws.com"
+    ManagedPolicyArns:
+      # We need to be able to pull our docker image. If your docker repo is in the same account this policy will do it.
+      # If you are deploying accross accounts you could remove this and instead ensure that your repo is readable by this role
+      - arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly
+  TaskPolicy:
+    # This is an additional policy we are going to attach to our role.
+    # We can add additional one-off grants here to allow our container to only access the AWS resources it needs.
+    Type: "AWS::IAM::Policy"
+    Properties:
+      PolicyName: !Sub "${AWS::StackName}-TaskPolicy"
+      Roles:
+        - !Ref TaskRole
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          # Allow the task to forward to Cloudwatch logs. (anything we send to stdout or stderr will go there)
+          - Effect: "Allow"
+            Action: 
+              - logs:*
+            Resource: !GetAtt LogGroup.Arn
+  # Create a place for logs to go.
+  LogGroup:
+    Type: "AWS::Logs::LogGroup"
+    Properties:
+      RetentionInDays: 30
+  # This defines the resources we need for our Task to execute
+  TaskDefinition:
+    Type: "AWS::ECS::TaskDefinition"
+    DependsOn: 
+      # We need a depends on here because without it the task may attempt to start before the policy is attached to the role.
+      - TaskPolicy
+    Properties: 
+      Cpu: 256 #This is 25% of a "vCPU", the smallest amount we can allocate
+      Memory: 512 #This is 512MB, the smallest amount we can allocate
+      ExecutionRoleArn: !GetAtt TaskRole.Arn
+      TaskRoleArn: !GetAtt TaskRole.Arn
+      # These next two properties are the only Fargate specific configuration in the TaskDefinition. 
+      # It forces an 'awsvpc' network mode
+      NetworkMode: awsvpc
+      RequiresCompatibilities:
+        - FARGATE
+      ContainerDefinitions:
+        - Name: ProductService
+          PortMappings:
+            - ContainerPort: 3000
+          Essential: true
+          Image: !Ref Image
+          LogConfiguration:
+            # This tells ECS to send log output to Cloudwatch. The prefix is required by Fargate so don't remove it.
+            LogDriver: "awslogs"
+            Options:
+              awslogs-group: !Ref LogGroup
+              awslogs-region: !Ref AWS::Region
+              awslogs-stream-prefix: ProductService

@@ -1,0 +1,18 @@
+version: 0.2
+env:
+  variables: {}
+phases:
+  pre_build:
+    commands:
+      - export RELEASE_IMAGE_URL="$DOCKER_IMAGE_URL:$CODEBUILD_RESOLVED_SOURCE_VERSION"
+  build:
+    commands:
+      - docker build --tag "$RELEASE_IMAGE_URL" .
+      - sed --in-place='bak' --expression="s|RELEASE_IMAGE_URL|${RELEASE_IMAGE_URL}|" parameters/*.params.json
+      - $(aws ecr get-login)
+      - docker push "$RELEASE_IMAGE_URL"
+artifacts:
+  discard-paths: yes
+  files:
+    - "cloudformation.template.yml"
+    - "parameters/*"

@@ -1,0 +1,110 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: Pipeline for Product Service
+Parameters:
+  RepoToken:
+    Type: String
+    NoEcho: true
+    Description: OAuth Token for the github repository
+Resources:
+  ArtifactStorage:
+    Type: "AWS::S3::Bucket"
+  PipelineRole:
+    Type: "AWS::IAM::Role"
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: "Allow"
+            Action: "sts:AssumeRole"
+            Principal:
+              Service: "codebuild.amazonaws.com"
+          - Effect: "Allow" 
+            Action: "sts:AssumeRole"
+            Principal:
+              Service: "codepipeline.amazonaws.com"
+          - Effect: "Allow" 
+            Action: "sts:AssumeRole"
+            Principal:
+              Service: "cloudformation.amazonaws.com"
+      ManagedPolicyArns:
+        - "arn:aws:iam::aws:policy/AWSCodeBuildAdminAccess"
+        - "arn:aws:iam::aws:policy/AdministratorAccess"
+  DockerRepo:
+    Type: "AWS::ECR::Repository"
+    Properties:
+      RepositoryPolicyText:
+        Version: "2012-10-17"
+        Statement:
+          - Sid: AllowPushPull
+            Effect: Allow
+            Action:
+              - "ecr:*"
+            Principal:
+              AWS:
+                - !GetAtt PipelineRole.Arn
+  # This resource sets up the build. In general, all it does is run arbitrary shell commands inside of a docker 
+  # container
+  BuildProject:
+    Type: AWS::CodeBuild::Project
+    Properties:
+      #This is the role that the build will execute as. If your build needs to pull artifacts from S3 or reach out of its container for any reason make sure this role has the permissions to do so.
+      ServiceRole: !GetAtt PipelineRole.Arn 
+      Source:
+        #Where our sourcecode will come from (This special keyword says that CodePipeline will provide it)
+        Type: CODEPIPELINE
+      Environment:
+        #This specifies what docker image and how much resources to give it to run the build.
+        Type: LINUX_CONTAINER
+        ComputeType: BUILD_GENERAL1_SMALL
+        Image: aws/codebuild/docker:1.12.1
+        EnvironmentVariables:
+          #We can put anything we want here and these will be set as environment variables when the build runs. 
+          #We're leveraging this to point to the Docker image repository we created earlier.
+          - Name: DOCKER_IMAGE_URL
+            Value: !Sub "${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/${DockerRepo}"
+      Artifacts:
+        #Send any output back to code pipeline
+        Type: CODEPIPELINE
+  Pipeline:
+    #This is the "Pipeline" or order flow of execution.
+    Type: AWS::CodePipeline::Pipeline
+    DependsOn:
+      - BuildProject
+    Properties:
+      ArtifactStore:
+        Type: "S3"
+        Location: !Ref ArtifactStorage
+      RoleArn: !GetAtt PipelineRole.Arn
+      RestartExecutionOnUpdate: true
+      Stages: 
+          #The first step triggers with changes in Github
+        - Name: Source
+          Actions:
+          - Name: Source
+            ActionTypeId:
+              Category: Source
+              Provider: GitHub
+              Owner: ThirdParty
+              Version: 1
+            OutputArtifacts:
+              - Name: sourceCode
+            Configuration:
+              Owner: "sourceallies" #Update this with your github username
+              Repo: "node-reference" #The repository to checkout
+              Branch: walkthrough
+              OAuthToken: !Ref RepoToken
+          #Step two is to build the project using our configured CodeBuild project above.
+        - Name: Build
+          Actions:
+          - Name: Build
+            ActionTypeId:
+              Category: Build
+              Owner: AWS
+              Provider: CodeBuild
+              Version: 1
+            InputArtifacts:
+              - Name: sourceCode
+            Configuration:
+              ProjectName: !Ref BuildProject
+            OutputArtifacts:
+              - Name: buildResults

@@ -15,20 +15,20 @@ Resources:
     Type: "AWS::ECS::Cluster"
     Properties: {}
   TaskRole:
-  Type: "AWS::IAM::Role"
-  Properties:
-    AssumeRolePolicyDocument:
-      Version: "2012-10-17"
-      Statement:
-        # Allow ECS the ability to assume this role.
-        - Effect: "Allow"
-          Action: "sts:AssumeRole"
-          Principal:
-            Service: "ecs-tasks.amazonaws.com"
-    ManagedPolicyArns:
-      # We need to be able to pull our docker image. If your docker repo is in the same account this policy will do it.
-      # If you are deploying accross accounts you could remove this and instead ensure that your repo is readable by this role
-      - arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly
+    Type: "AWS::IAM::Role"
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          # Allow ECS the ability to assume this role.
+          - Effect: "Allow"
+            Action: "sts:AssumeRole"
+            Principal:
+              Service: "ecs-tasks.amazonaws.com"
+      ManagedPolicyArns:
+        # We need to be able to pull our docker image. If your docker repo is in the same account this policy will do it.
+        # If you are deploying accross accounts you could remove this and instead ensure that your repo is readable by this role
+        - arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly
   TaskPolicy:
     # This is an additional policy we are going to attach to our role.
     # We can add additional one-off grants here to allow our container to only access the AWS resources it needs.

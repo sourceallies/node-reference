@@ -4,6 +4,12 @@ Parameters:
   Image:
     Type: String
     Description: Docker image to run
+  VpcId:
+    Type: AWS::EC2::VPC::Id
+    Description: Id of the VPC
+  SubnetIds:
+    Type: List<AWS::EC2::Subnet::Id>
+    Description: List of subnet Ids to run in
 Resources:
   ECSCluster:
     Type: "AWS::ECS::Cluster"
@@ -73,3 +79,29 @@ Resources:
               awslogs-group: !Ref LogGroup
               awslogs-region: !Ref AWS::Region
               awslogs-stream-prefix: ProductService
+  Service: 
+    Type: "AWS::ECS::Service"
+    Properties: 
+      Cluster: !Ref ECSCluster
+      # This is new with fargate (obviously)
+      LaunchType: FARGATE
+      # The number of instances we would like to run
+      DesiredCount: 1 
+      # The task to execute
+      TaskDefinition: !Ref TaskDefinition
+  #    We haven't setup a load balancer yet so this part is commented out. 
+  #    The Service references the loadbalancer rather than the other way around
+  #    LoadBalancers: 
+  #      - ContainerName: ProductService
+  #        ContainerPort: 3000
+  #        TargetGroupArn: !Ref TargetGroup
+      NetworkConfiguration: 
+        AwsvpcConfiguration:
+          AssignPublicIp: ENABLED
+          Subnets: !Ref SubnetIds
+  #        SecurityGroups:
+  #          - !Ref AppSG
+      # This is optional (These are the default values)
+      DeploymentConfiguration:
+        MinimumHealthyPercent: 100 #Never allow less than this percentage of servers to be running during a deploy
+        MaximumPercent: 200 # Allow double the number of servers to be running during a deployment

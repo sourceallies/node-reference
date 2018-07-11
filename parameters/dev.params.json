@@ -2,6 +2,8 @@
     "Parameters": {
         "VpcId": "vpc-65a65202",
         "SubnetIds": "subnet-7d6d270b,subnet-d897febd,subnet-ef42c9e3,subnet-1fd84335,subnet-dd1a49e0,subnet-a0fa9bf8",
+        "Subdomain": "products-dev",
+        "BaseDomain": "dev.sourceallies.com",
         "Image": "RELEASE_IMAGE_URL"
     }
 }

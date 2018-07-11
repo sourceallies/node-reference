@@ -91,17 +91,80 @@ Resources:
       TaskDefinition: !Ref TaskDefinition
   #    We haven't setup a load balancer yet so this part is commented out. 
   #    The Service references the loadbalancer rather than the other way around
-  #    LoadBalancers: 
-  #      - ContainerName: ProductService
-  #        ContainerPort: 3000
-  #        TargetGroupArn: !Ref TargetGroup
+     LoadBalancers: 
+       - ContainerName: ProductService
+         ContainerPort: 3000
+         TargetGroupArn: !Ref TargetGroup
       NetworkConfiguration: 
         AwsvpcConfiguration:
           AssignPublicIp: ENABLED
           Subnets: !Ref SubnetIds
-  #        SecurityGroups:
-  #          - !Ref AppSG
+          SecurityGroups:
+            - !Ref AppSG
       # This is optional (These are the default values)
       DeploymentConfiguration:
         MinimumHealthyPercent: 100 #Never allow less than this percentage of servers to be running during a deploy
         MaximumPercent: 200 # Allow double the number of servers to be running during a deployment
+  LoadBalancerSG: #This security group allows us to whitelist traffic from the internet to our load balancer
+    Type: "AWS::EC2::SecurityGroup"
+    Properties:
+      GroupDescription: "Load balancer security group"
+      VpcId: !Ref VpcId      
+      SecurityGroupIngress:
+        - IpProtocol: "tcp"
+          CidrIp: "0.0.0.0/0"
+          FromPort: 80
+          ToPort: 80
+        - IpProtocol: "tcp"
+          CidrIp: "0.0.0.0/0"
+          FromPort: 443
+          ToPort: 443
+  AppSG: #This security group holds the application
+    Type: "AWS::EC2::SecurityGroup"
+    Properties:
+      GroupDescription: "Application security group"
+      VpcId: !Ref VpcId 
+      SecurityGroupIngress:
+        - IpProtocol: "tcp"
+          SourceSecurityGroupId: !Ref LoadBalancerSG
+          FromPort: 1
+          ToPort: 65000
+  LoadBalancer:
+    Type: AWS::ElasticLoadBalancingV2::LoadBalancer
+    Properties:
+      Scheme: internet-facing
+      Subnets: !Ref SubnetIds
+      SecurityGroups:
+        - !Ref LoadBalancerSG
+  LBListener:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    DependsOn:
+      - LoadBalancer
+      - TargetGroup
+    Properties:
+      DefaultActions:
+      - Type: forward
+        TargetGroupArn: !Ref TargetGroup
+      LoadBalancerArn: !Ref LoadBalancer
+      Port: 80
+      Protocol: HTTP
+  TargetGroup:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    DependsOn: 
+      - LoadBalancer
+    Properties:
+      TargetType: ip #the default is "instance" but we must use ip to forward to fargate
+      VpcId: !Ref VpcId
+      Protocol: HTTP # do not change to HTTPS
+      Port: 3000
+      HealthCheckPath: /hello
+      HealthCheckIntervalSeconds: 10
+      HealthCheckTimeoutSeconds: 5
+      HealthyThresholdCount: 2
+      UnhealthyThresholdCount: 2
+      TargetGroupAttributes:
+        - Key:  deregistration_delay.timeout_seconds
+          Value:  30
+Outputs:
+  LoadBalancerDNS:
+    Value: !GetAtt LoadBalancer.DNSName

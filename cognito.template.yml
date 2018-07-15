@@ -1,0 +1,177 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: Pipeline for Organization's Cognito UserPool
+Parameters:
+  AuthName:
+    Type: String
+    Description: Unique Auth Name for Cognito Resources
+Resources:
+  UserPool:
+    Type: "AWS::Cognito::UserPool"
+    Properties:
+      UserPoolName: !Sub ${AuthName}-user-pool
+      MfaConfiguration: "OFF"
+      AutoVerifiedAttributes:
+        - email
+      Schema:
+        - Name: sub
+          AttributeDataType: String
+          Mutable: true
+          Required: true
+          StringAttributeConstraints:
+            MinLength: "1"
+            MaxLength: "2048"
+          DeveloperOnlyAttribute: false
+        - Name: name
+          AttributeDataType: String
+          Mutable: true
+          Required: false
+          StringAttributeConstraints:
+            MinLength: "0"
+            MaxLength: "2048"
+          DeveloperOnlyAttribute: false
+        - Name: given_name
+          AttributeDataType: String
+          Mutable: true
+          Required: false
+          StringAttributeConstraints:
+            MinLength: "0"
+            MaxLength: "2048"
+          DeveloperOnlyAttribute: false
+        - Name: family_name
+          AttributeDataType: String
+          Mutable: true
+          Required: false
+          StringAttributeConstraints:
+            MinLength: "0"
+            MaxLength: "2048"
+          DeveloperOnlyAttribute: false
+        - Name: middle_name
+          AttributeDataType: String
+          Mutable: true
+          Required: false
+          StringAttributeConstraints:
+            MinLength: "0"
+            MaxLength: "2048"
+          DeveloperOnlyAttribute: false
+        - Name: nickname
+          AttributeDataType: String
+          Mutable: true
+          Required: false
+          StringAttributeConstraints:
+            MinLength: "0"
+            MaxLength: "2048"
+          DeveloperOnlyAttribute: false
+        - Name: preferred_username
+          AttributeDataType: String
+          Mutable: true
+          Required: false
+          StringAttributeConstraints:
+            MinLength: "0"
+            MaxLength: "2048"
+          DeveloperOnlyAttribute: false
+        - Name: profile
+          AttributeDataType: String
+          Mutable: true
+          Required: false
+          StringAttributeConstraints:
+            MinLength: "0"
+            MaxLength: "2048"
+          DeveloperOnlyAttribute: false
+        - Name: picture
+          AttributeDataType: String
+          Mutable: true
+          Required: false
+          StringAttributeConstraints:
+            MinLength: "0"
+            MaxLength: "2048"
+          DeveloperOnlyAttribute: false
+        - Name: website
+          AttributeDataType: String
+          Mutable: true
+          Required: false
+          StringAttributeConstraints:
+            MinLength: "0"
+            MaxLength: "2048"
+          DeveloperOnlyAttribute: false
+        - Name: email
+          AttributeDataType: String
+          Mutable: true
+          Required: false
+          StringAttributeConstraints:
+            MinLength: "0"
+            MaxLength: "2048"
+          DeveloperOnlyAttribute: false
+        - Name: email_verified
+          AttributeDataType: Boolean
+          Mutable: true
+          Required: false
+          DeveloperOnlyAttribute: false
+        - Name: gender
+          AttributeDataType: String
+          Mutable: true
+          Required: false
+          StringAttributeConstraints:
+            MinLength: "0"
+            MaxLength: "2048"
+          DeveloperOnlyAttribute: false
+        - Name: birthdate
+          AttributeDataType: String
+          Mutable: true
+          Required: false
+          StringAttributeConstraints:
+            MinLength: "10"
+            MaxLength: "10"
+          DeveloperOnlyAttribute: false
+        - Name: zoneinfo
+          AttributeDataType: String
+          Mutable: true
+          Required: false
+          StringAttributeConstraints:
+            MinLength: "0"
+            MaxLength: "2048"
+          DeveloperOnlyAttribute: false
+        - Name: locale
+          AttributeDataType: String
+          Mutable: true
+          Required: false
+          StringAttributeConstraints:
+            MinLength: "0"
+            MaxLength: "2048"
+          DeveloperOnlyAttribute: false
+        - Name: phone_number
+          AttributeDataType: String
+          Mutable: true
+          Required: false
+          StringAttributeConstraints:
+            MinLength: "0"
+            MaxLength: "2048"
+          DeveloperOnlyAttribute: false
+        - Name: address
+          AttributeDataType: String
+          Mutable: true
+          Required: false
+          StringAttributeConstraints:
+            MinLength: "0"
+            MaxLength: "2048"
+          DeveloperOnlyAttribute: false
+        - Name: updated_at
+          AttributeDataType: Number
+          Mutable: true
+          Required: false
+          NumberAttributeConstraints:
+            MinValue: "0"
+          DeveloperOnlyAttribute: false
+      Policies:
+        PasswordPolicy:
+          RequireLowercase: true
+          RequireSymbols: true
+          RequireNumbers: true
+          MinimumLength: "8"
+          RequireUppercase: true
+  # All attributes are readable and writable by default because 
+  # no "ReadAttributes" or "WriteAttributes" are specified.
+Outputs:
+  UserPoolId:
+    Value: !Ref UserPool
+    Export:
+      Name: "UserPool::Id"

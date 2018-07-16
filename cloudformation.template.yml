@@ -85,6 +85,9 @@ Resources:
               awslogs-group: !Ref LogGroup
               awslogs-region: !Ref AWS::Region
               awslogs-stream-prefix: ProductService
+          Environment: 
+            - Name: USER_POOL_ID
+              Value: !ImportValue "UserPool::Id"
   Service: 
     Type: "AWS::ECS::Service"
     Properties: 

@@ -197,7 +197,7 @@ Resources:
       DomainName: !Sub "${Subdomain}.${BaseDomain}"
       DomainValidationOptions:
         - DomainName: !Sub "${Subdomain}.${BaseDomain}"
-          ValidationDomain: !Ref BaseDomain
+          ValidationDomain: "sourceallies.com"
   ProductsTable:
     Type: "AWS::DynamoDB::Table"
     Properties:

@@ -51,6 +51,10 @@ Resources:
             Action: 
               - logs:*
             Resource: !GetAtt LogGroup.Arn
+          - Effect: "Allow"
+            Action: 
+              - dynamodb:*
+            Resource: !GetAtt ProductsTable.Arn
   # Create a place for logs to go.
   LogGroup:
     Type: "AWS::Logs::LogGroup"
@@ -88,6 +92,10 @@ Resources:
           Environment: 
             - Name: USER_POOL_ID
               Value: !ImportValue "UserPool::Id"
+            - Name: PRODUCTS_TABLE_NAME
+              Value: !Ref ProductsTable
+            - Name: AWS_REGION
+              Value: !Ref "AWS::Region"
   Service: 
     Type: "AWS::ECS::Service"
     Properties: 
@@ -190,6 +198,91 @@ Resources:
       DomainValidationOptions:
         - DomainName: !Sub "${Subdomain}.${BaseDomain}"
           ValidationDomain: !Ref BaseDomain
+  ProductsTable:
+    Type: "AWS::DynamoDB::Table"
+    Properties:
+      AttributeDefinitions:
+        - AttributeName: id
+          AttributeType: S
+      KeySchema:
+        - AttributeName: id
+          KeyType: "HASH"
+      ProvisionedThroughput: 
+        ReadCapacityUnits: 1
+        WriteCapacityUnits: 1
+  WriteCapacityScalableTarget:
+    Type: "AWS::ApplicationAutoScaling::ScalableTarget"
+    Properties:
+      MaxCapacity: 5
+      MinCapacity: 1
+      ResourceId: !Sub "table/${ProductsTable}"
+      RoleARN: !GetAtt ScalingRole.Arn
+      ScalableDimension: dynamodb:table:WriteCapacityUnits
+      ServiceNamespace: dynamodb
+  ReadCapacityScalableTarget:
+    Type: "AWS::ApplicationAutoScaling::ScalableTarget"
+    Properties:
+      MaxCapacity: 5
+      MinCapacity: 1
+      ResourceId: !Sub "table/${ProductsTable}"
+      RoleARN: !GetAtt ScalingRole.Arn
+      ScalableDimension: dynamodb:table:ReadCapacityUnits
+      ServiceNamespace: dynamodb
+  ScalingRole:
+    Type: "AWS::IAM::Role"
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: "Allow"
+            Principal:
+              Service:
+                - application-autoscaling.amazonaws.com
+            Action:
+              - "sts:AssumeRole"
+      Policies:
+        - PolicyName: "root"
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: "Allow"
+                Action:
+                  - "dynamodb:DescribeTable"
+                  - "dynamodb:UpdateTable"
+                  - "cloudwatch:PutMetricAlarm"
+                  - "cloudwatch:DescribeAlarms"
+                  - "cloudwatch:GetMetricStatistics"
+                  - "cloudwatch:SetAlarmState"
+                  - "cloudwatch:DeleteAlarms"
+                Resource: "*"
+  WriteScalingPolicy:
+    Type: "AWS::ApplicationAutoScaling::ScalingPolicy"
+    Properties:
+      PolicyName: WriteAutoScalingPolicy
+      PolicyType: TargetTrackingScaling
+      ScalingTargetId: !Ref WriteCapacityScalableTarget
+      TargetTrackingScalingPolicyConfiguration:
+        TargetValue: 50.0
+        ScaleInCooldown: 60
+        ScaleOutCooldown: 60
+        PredefinedMetricSpecification:
+          PredefinedMetricType: DynamoDBWriteCapacityUtilization
+  ReadScalingPolicy:
+    Type: "AWS::ApplicationAutoScaling::ScalingPolicy"
+    Properties:
+      PolicyName: ReadAutoScalingPolicy
+      PolicyType: TargetTrackingScaling
+      ScalingTargetId: !Ref ReadCapacityScalableTarget
+      TargetTrackingScalingPolicyConfiguration:
+        TargetValue: 50.0
+        ScaleInCooldown: 60
+        ScaleOutCooldown: 60
+        PredefinedMetricSpecification:
+          PredefinedMetricType: DynamoDBReadCapacityUtilization
 Outputs:
   LoadBalancerDNS:
     Value: !GetAtt LoadBalancer.DNSName
+  ProductsTable:
+    Value: !Ref ProductsTable
+    Export:
+      Name: !Sub "${AWS::StackName}:ProductsTable::Id"

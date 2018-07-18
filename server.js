@@ -15,6 +15,7 @@ app.listen(3000);
 function buildRouter() {
     const router = new Router();
     router.get('/hello', require('./hello'));
+    router.post('/products', require('./products/createProduct'));
     return router;
 }
 

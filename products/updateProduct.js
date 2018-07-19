@@ -69,7 +69,6 @@ async function saveProduct(product, lastModified) {
         throw e;
     }
 
-    await broadcastProductEvent(product.id);
     return {
         status: 200,
         body: product
@@ -80,7 +79,10 @@ module.exports = async function(ctx) {
     const id = ctx.params.id;
     const patchDocument = ctx.request.body;
     const product = await loadProduct(id);
-    await snapshotProduct({...product});
+    await Promise.all([
+        snapshotProduct({...product}),
+        broadcastProductEvent(product.id)
+    ]);
     const lastModified = product.lastModified;
 
     const response = validatePatchDocument(patchDocument) ||

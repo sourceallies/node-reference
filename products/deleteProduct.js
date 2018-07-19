@@ -1,17 +1,58 @@
-'use strict';
-
 const AWS = require('aws-sdk');
 const documentClient = new AWS.DynamoDB.DocumentClient();
 const broadcastProductEvent = require('./broadcastProductEvent');
+const snapshotProduct = require('./snapshots/snapshotProduct');
 const productsTableName = process.env.PRODUCTS_TABLE_NAME || 'Products';
 
-module.exports = async function(ctx) {
-    let id = ctx.params.id;
-    const result = await documentClient.delete({
+async function loadProduct(id) {
+    const result = await documentClient.get({
         TableName: productsTableName,
         Key: {id}
     }).promise();
+    return result.Item;
+}
 
-    await broadcastProductEvent(id);    
-    ctx.status = 204;
+async function setDeleted(id, lastModified) {
+    try {
+        const newLastModified = (new Date(Date.now())).toISOString();
+        await documentClient.update({
+            TableName: productsTableName,
+            Key: {
+                id
+            },
+            ConditionExpression: 'lastModified = :lastModified',
+            UpdateExpression: 'set deleted=:deleted, lastModified=:newLastModified',
+            ExpressionAttributeValues: {
+                ':lastModified': lastModified,
+                ':deleted': true,
+                ':newLastModified': newLastModified
+            }
+        }).promise();
+    } catch (e) {
+        if (e.name === 'ConditionalCheckFailedException') {
+            return {
+                status: 409
+            };
+        }
+        throw e;
+    }
+
+    return {
+        status: 204
+    };
+}
+
+module.exports = async function(ctx) {
+    const id = ctx.params.id;
+    const product = await loadProduct(id);
+    await Promise.all([
+        snapshotProduct({...product}),
+        broadcastProductEvent(id)
+    ]);   
+    const lastModified = product.lastModified;
+
+    const response = await setDeleted(id, lastModified);
+
+    ctx.body = response.body;
+    ctx.status = response.status;
 };

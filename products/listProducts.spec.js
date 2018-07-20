@@ -44,6 +44,11 @@ describe('products', function () {
             expect(this.documentClient.scan.calls.argsFor(0)[0].TableName).toEqual('Products');
         });
 
+        it('should filter out deleted items', async function() {
+            await this.listProducts(this.context);
+            expect(this.documentClient.scan.FilterExpression).toEqual('attribute_not_exists(deleted)');
+        });
+
         it('should return the product list', async function() {
             await this.listProducts(this.context);
             expect(this.context.body).toEqual(this.response.Items);

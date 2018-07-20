@@ -46,7 +46,8 @@ describe('products', function () {
 
         it('should filter out deleted items', async function() {
             await this.listProducts(this.context);
-            expect(this.documentClient.scan.FilterExpression).toEqual('attribute_not_exists(deleted)');
+            expect(this.documentClient.scan.calls.argsFor(0)[0].FilterExpression)
+                .toEqual('attribute_not_exists(deleted)');
         });
 
         it('should return the product list', async function() {

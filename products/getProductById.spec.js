@@ -49,5 +49,13 @@ describe('products', function () {
             await this.getProductById(this.context);
             expect(this.context.body).toEqual(this.response.Item);
         });
+
+        it('should return a 404 if the product does not exist', async function () {
+            delete this.response.Item;
+
+            await this.getProductById(this.context);
+
+            expect(this.context.status).toEqual(404);
+        });
     });
 });

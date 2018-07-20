@@ -8,7 +8,7 @@ module.exports = async function(ctx) {
     let id = ctx.params.id;
     const result = await documentClient.get({
         TableName: productsTableName,
-        Key: {id}
+        Key: {id},
     }).promise();
 
     ctx.body = result.Item;

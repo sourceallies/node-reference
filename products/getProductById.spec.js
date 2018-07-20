@@ -57,5 +57,13 @@ describe('products', function () {
 
             expect(this.context.status).toEqual(404);
         });
+
+        it('should return a 410 if the product has been deleted', async function () {
+            this.response.Item.deleted = true;
+
+            await this.getProductById(this.context);
+
+            expect(this.context.status).toEqual(410);
+        });
     });
 });

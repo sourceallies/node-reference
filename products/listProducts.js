@@ -2,7 +2,6 @@
 
 const AWS = require('aws-sdk');
 const documentClient = new AWS.DynamoDB.DocumentClient();
-const getElapsedDurationInMs = require('../common/getElapsedDurationInMs');
 const formatLinkHeader = require('format-link-header');
 const productsTableName = process.env.PRODUCTS_TABLE_NAME || 'Products';
 

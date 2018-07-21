@@ -9,10 +9,13 @@ phases:
     commands:
       - docker build --tag "$RELEASE_IMAGE_URL" .
       - sed --in-place='bak' --expression="s|RELEASE_IMAGE_URL|${RELEASE_IMAGE_URL}|" parameters/*.params.json
-      - $(aws ecr get-login)
+      - echo $RELEASE_IMAGE_URL > RELEASE_IMAGE_URL.txt
+      - $(aws ecr get-login --no-include-email --region $AWS_DEFAULT_REGION)
       - docker push "$RELEASE_IMAGE_URL"
 artifacts:
   discard-paths: yes
   files:
     - "cloudformation.template.yml"
+    - "RELEASE_IMAGE_URL.txt"
     - "parameters/*"
+    - "integration-tests/integration.buildspec.yml"

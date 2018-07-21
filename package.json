@@ -5,7 +5,8 @@
   "main": "server.js",
   "scripts": {
     "test": "jasmine",
-    "start": "node server.js"
+    "start": "node server.js",
+    "integration-test": "jasmine JASMINE_CONFIG_PATH=integration-tests/jasmine.it.json"
   },
   "repository": {
     "type": "git",
@@ -28,6 +29,7 @@
   "homepage": "https://www.sourceallies.com/2018/07/node-reference-intro/",
   "devDependencies": {
     "jasmine": "^3.1.0",
+    "node-fetch": "^2.1.2",
     "proxyquire": "^2.0.1"
   },
   "dependencies": {

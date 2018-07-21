@@ -5,6 +5,11 @@ Parameters:
     Type: String
     NoEcho: true
     Description: OAuth Token for the github repository
+  PipelineAdminArn:
+    Type: String
+    Description: |
+      ARN of a user or role that can administrate this pipeline.
+      This can be obtained by running 'aws sts get-caller-identity --query='Arn' --output=text'
 Resources:
   ArtifactStorage:
     Type: "AWS::S3::Bucket"
@@ -42,6 +47,41 @@ Resources:
             Principal:
               AWS:
                 - !GetAtt PipelineRole.Arn
+  PipelineKey:
+    Type: "AWS::KMS::Key"
+    Properties:
+      KeyPolicy:
+        Version: "2012-10-17"
+        Statement: 
+          - Sid: "Allow administration of the key"
+            Effect: "Allow"
+            Principal: 
+              AWS: !Ref PipelineAdminArn
+            Action: 
+              - "kms:*"
+            Resource: "*"
+          - Sid: "Allow use of the key"
+            Effect: "Allow"
+            Principal: 
+              AWS: !GetAtt PipelineRole.Arn
+            Action: 
+              - "kms:Decrypt"
+            Resource: "*"
+          - Sid: "Allow Encryption by everyone in the account"
+            Effect: "Allow"
+            Principal: 
+              AWS: "*"
+            Action: 
+              - "kms:Encrypt"
+            Resource: "*"
+            Condition:
+              StringEquals:
+                "kms:CallerAccount": !Ref "AWS::AccountId"
+  PipelineKeyAlias:
+    Type: "AWS::KMS::Alias"
+    Properties:
+      AliasName: !Sub "alias/${AWS::StackName}-key"
+      TargetKeyId: !Ref PipelineKey
   # This resource sets up the build. In general, all it does is run arbitrary shell commands inside of a docker 
   # container
   BuildProject:
@@ -64,6 +104,28 @@ Resources:
             Value: !Sub "${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/${DockerRepo}"
       Artifacts:
         #Send any output back to code pipeline
+        Type: CODEPIPELINE
+  IntegrationTest:
+    Type: AWS::CodeBuild::Project
+    DependsOn:
+      - PipelineRole
+    Properties:
+      ServiceRole: !GetAtt PipelineRole.Arn
+      Source:
+        Type: CODEPIPELINE
+        BuildSpec: integration.buildspec.yml
+      Environment:
+        Type: LINUX_CONTAINER
+        ComputeType: BUILD_GENERAL1_SMALL
+        Image: aws/codebuild/docker:17.09.0
+        EnvironmentVariables:
+          - Name: BASE_URL
+            Value: "https://products-dev.dev.sourceallies.com/"
+          - Name: CLIENT_ID
+            Value: "4c8mmtv4fsagkdkmvt2k209u3fui"
+          - Name: ENCRYPTED_CLIENT_SECRET
+            Value: "AaHnF6f354wmQfF4YdC0DUg...2YC8MdBg+HGF4H83LcAJCfPCv87qg=="
+      Artifacts:
         Type: CODEPIPELINE
   Pipeline:
     #This is the "Pipeline" or order flow of execution.
@@ -111,6 +173,7 @@ Resources:
         - Name: Deploy_DEV
           Actions:
           - Name: Deploy
+            RunOrder: 1
             RoleArn: !GetAtt PipelineRole.Arn
             ActionTypeId:
               Category: Deploy
@@ -129,6 +192,17 @@ Resources:
               TemplateConfiguration: buildResults::dev.params.json
               RoleArn: !GetAtt PipelineRole.Arn
               Capabilities: CAPABILITY_IAM
+          - Name: IntegrationTest
+            RunOrder: 2
+            ActionTypeId:
+              Category: Test
+              Owner: AWS
+              Provider: CodeBuild
+              Version: 1
+            InputArtifacts:
+              - Name: buildResults
+            Configuration:
+              ProjectName: !Ref IntegrationTest
           #This is the same as the stage above except the StackName, ActionMode and TemplateConfiguration are different
         - Name: Deploy_PROD
           Actions:

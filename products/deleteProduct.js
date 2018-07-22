@@ -30,16 +30,12 @@ async function setDeleted(id, lastModified) {
         }).promise();
     } catch (e) {
         if (e.name === 'ConditionalCheckFailedException') {
-            return {
-                status: 409
-            };
+            return 409;
         }
         throw e;
     }
 
-    return {
-        status: 204
-    };
+    return 204;
 }
 
 module.exports = async function(ctx) {
@@ -51,8 +47,5 @@ module.exports = async function(ctx) {
     ]);   
     const lastModified = product.lastModified;
 
-    const response = await setDeleted(id, lastModified);
-
-    ctx.body = response.body;
-    ctx.status = response.status;
+    ctx.status = await setDeleted(id, lastModified);
 };

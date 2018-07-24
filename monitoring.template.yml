@@ -1,0 +1,236 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: Monitoring dashboards
+Parameters:
+  ProductServiceStackName:
+    Type: String
+    Description: Name of the product service cloudformation stack
+  AlarmEmail:
+    Type: String
+    Description: Email address that should be alerted of Alarms
+  HealthCheckRoute:
+    Type: String
+    Description: An unathenticated endpoint for health check purposes.  Returns 200 if OK.  Example is "/health" or "/hello".
+Resources:
+  Dashboard:
+    Type: "AWS::CloudWatch::Dashboard"
+    Properties:
+      DashboardName: "My_Dashboard"
+      DashboardBody:
+        Fn::Sub:
+          - |
+            {
+              "widgets": [
+                {
+                  "type": "metric",
+                  "width": 24,
+                  "properties": {
+                    "title": "Average Response Time",
+                    "period": 60,
+                    "stat": "p95",
+                    "region": "${AWS::Region}",
+                    "metrics": [
+                      ["AWS/ApplicationELB", "TargetResponseTime", "LoadBalancer", "${ProductServiceLoadBalancerFullName}", {"label": "Product Service"}]
+                    ]
+                  }
+                },
+                {
+                  "type": "metric",
+                  "width": 24,
+                  "properties": {
+                    "title": "Request Counts",
+                    "period": 60,
+                    "stat": "Sum",
+                    "region": "${AWS::Region}",
+                    "metrics": [
+                      ["AWS/ApplicationELB", "HTTPCode_Target_5XX_Count", "LoadBalancer", "${ProductServiceLoadBalancerFullName}", {"label": "Product Service 5xx"}]
+                    ]
+                  }
+                },
+                {
+                  "type": "metric",
+                  "width": 24,
+                  "properties": {
+                    "title": "Throttled Requests",
+                    "period": 60,
+                    "stat": "Sum",
+                    "region": "${AWS::Region}",
+                    "metrics": [
+                      ["AWS/DynamoDB", "ThrottledRequests", "TableName", "${ProductServiceTableName}", {"label": "Table Throttled Requests"}]
+                    ]
+                  }
+                }
+              ]
+            }
+          - ProductServiceLoadBalancerFullName:
+              Fn::ImportValue: !Sub "${ProductServiceStackName}:LoadBalancerFullName"
+            ProductServiceTableName:
+              Fn::ImportValue: !Sub "${ProductServiceStackName}:ProductsTable::Id"
+  AlarmTopic: 
+    Type: "AWS::SNS::Topic"
+    Properties: {}
+  ProductServiceResponseTimeAlarm:
+    Type: "AWS::CloudWatch::Alarm"
+    Properties:
+      AlarmDescription: Product Service response time over 100ms  
+      Namespace: "AWS/ApplicationELB"
+      MetricName: "TargetResponseTime"
+      Dimensions:
+        - Name: "LoadBalancer"
+          Value: 
+            Fn::ImportValue: !Sub "${ProductServiceStackName}:LoadBalancerFullName"
+      ExtendedStatistic: p95
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      Threshold: 100
+      Period: 60
+      EvaluationPeriods: 1
+      ActionsEnabled: true #This can be set to false in non-prod environments if you don't want to be alerted
+      AlarmActions:
+        - !Ref AlarmTopic
+  ProductServiceErrorAlarm:
+    Type: "AWS::CloudWatch::Alarm"
+    Properties:
+      AlarmDescription: Product Service producing 5xx responses
+      Namespace: "AWS/ApplicationELB"
+      MetricName: "HTTPCode_Target_5XX_Count"
+      Dimensions:
+        - Name: "LoadBalancer"
+          Value: 
+            Fn::ImportValue: !Sub "${ProductServiceStackName}:LoadBalancerFullName"
+      Statistic: Sum
+      ComparisonOperator: GreaterThanThreshold
+      Threshold: 0
+      Period: 3600 # 1 Hour
+      EvaluationPeriods: 1
+      ActionsEnabled: true #This can be set to false in non-prod environments if you don't want to be alerted
+      AlarmActions:
+        - !Ref AlarmTopic
+  ReadThrottleEventsAlarm:
+    Type: 'AWS::CloudWatch::Alarm'
+    Properties:
+      AlarmDescription: 'Reads are throttled. Lower ReadCapacityUnitsUtilizationTarget or increase MaxReadCapacityUnits.'
+      Namespace: 'AWS/DynamoDB'
+      MetricName: ReadThrottleEvents
+      Dimensions:
+      - Name: TableName
+        Value:
+          Fn::ImportValue: !Sub "${ProductServiceStackName}:ProductsTable::Id"
+      Statistic: Sum
+      Period: 60
+      EvaluationPeriods: 1
+      Threshold: 1
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      AlarmActions:
+      - !Ref AlarmTopic
+      OKActions:
+      - !Ref AlarmTopic
+  WriteThrottleEventsAlarm:
+    Type: 'AWS::CloudWatch::Alarm'
+    Properties:
+      AlarmDescription: 'Writes are throttled. Lower WriteCapacityUnitsUtilizationTarget or increase MaxWriteCapacityUnits.'
+      Namespace: 'AWS/DynamoDB'
+      MetricName: WriteThrottleEvents
+      Dimensions:
+      - Name: TableName
+        Value:
+          Fn::ImportValue: !Sub "${ProductServiceStackName}:ProductsTable::Id"
+      Statistic: Sum
+      Period: 60
+      EvaluationPeriods: 1
+      Threshold: 1
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      AlarmActions:
+      - !Ref AlarmTopic
+      OKActions:
+      - !Ref AlarmTopic
+  ThrottledRequestsEventsAlarm:
+    Type: 'AWS::CloudWatch::Alarm'
+    Properties:
+      AlarmDescription: 'Batch requests are throttled. Lower {Read/Write}CapacityUnitsUtilizationTarget or increase Max{Read/Write}CapacityUnits.'
+      Namespace: 'AWS/DynamoDB'
+      MetricName: ThrottledRequests
+      Dimensions:
+      - Name: TableName
+        Value:
+          Fn::ImportValue: !Sub "${ProductServiceStackName}:ProductsTable::Id"
+      Statistic: Sum
+      Period: 60
+      EvaluationPeriods: 1
+      Threshold: 1
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      AlarmActions:
+      - !Ref AlarmTopic
+      OKActions:
+      - !Ref AlarmTopic
+  UserErrorsAlarm:
+    Type: 'AWS::CloudWatch::Alarm'
+    Properties:
+      AlarmDescription: 'User errors'
+      Namespace: 'AWS/DynamoDB'
+      MetricName: UserErrors
+      Dimensions:
+      - Name: TableName
+        Value:
+          Fn::ImportValue: !Sub "${ProductServiceStackName}:ProductsTable::Id"
+      Statistic: Sum
+      Period: 60
+      EvaluationPeriods: 1
+      Threshold: 1
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      AlarmActions:
+      - !Ref AlarmTopic
+      OKActions:
+      - !Ref AlarmTopic
+  SystemErrorsAlarm:
+    Type: 'AWS::CloudWatch::Alarm'
+    Properties:
+      AlarmDescription: 'System errors'
+      Namespace: 'AWS/DynamoDB'
+      MetricName: SystemErrors
+      Dimensions:
+      - Name: TableName
+        Value:
+          Fn::ImportValue: !Sub "${ProductServiceStackName}:ProductsTable::Id"
+      Statistic: Sum
+      Period: 60
+      EvaluationPeriods: 1
+      Threshold: 1
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      AlarmActions:
+      - !Ref AlarmTopic
+      OKActions:
+      - !Ref AlarmTopic
+  EmailAlarmSubscription:
+    Type: "AWS::SNS::Subscription"
+    Properties:
+      TopicArn: !Ref AlarmTopic
+      Protocol: email
+      Endpoint: !Ref AlarmEmail
+  DNSHealthCheck:
+    Type: "AWS::Route53::HealthCheck"
+    Properties:
+      HealthCheckConfig:
+        EnableSNI: true
+        FailureThreshold: 3
+        FullyQualifiedDomainName:
+          Fn::ImportValue:
+            Fn::Sub: ${ProductServiceStackName}:FQDN
+        Inverted: false
+        Port: 443
+        RequestInterval: 30
+        ResourcePath: !Ref HealthCheckRoute
+        Type: "HTTPS"
+  HealthCheckAlarm:
+    Type: "AWS::CloudWatch::Alarm"
+    Properties:
+      AlarmActions:
+        - !Ref AlarmTopic
+      ComparisonOperator: "LessThanThreshold"
+      Dimensions:
+      - Name: HealthCheckId
+        Value: !Ref DNSHealthCheck
+      EvaluationPeriods: 1
+      MetricName: "HealthCheckStatus"
+      Namespace: "AWS/Route53"
+      Period: 60
+      Statistic: "Minimum"
+      Threshold: 1.0

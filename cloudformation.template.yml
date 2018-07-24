@@ -286,3 +286,11 @@ Outputs:
     Value: !Ref ProductsTable
     Export:
       Name: !Sub "${AWS::StackName}:ProductsTable::Id"
+  LoadBalancerFullName:
+    Value: !GetAtt LoadBalancer.LoadBalancerFullName
+    Export:
+      Name: !Sub "${AWS::StackName}:LoadBalancerFullName"
+  FullyQualifiedDomainName:
+    Value: !Sub "$SubDomain}.${BaseDomain}"
+    Export:
+      Name: !Sub "${AWS::StackName}:FQDN"

@@ -33,6 +33,9 @@ describe('products', function () {
             this.validateProduct = (product) => undefined;
             spyOn(this, 'validateProduct').and.callThrough();
 
+            this.snapshotProduct = (product) => Promise.resolve();
+            spyOn(this, 'snapshotProduct');
+
             this.updateProduct = proxyquire('./updateProduct', {
                 'aws-sdk': {
                     DynamoDB: {
@@ -41,7 +44,8 @@ describe('products', function () {
                         }
                     }
                 },
-                './validateProduct': this.validateProduct                
+                './validateProduct': this.validateProduct,
+                './snapshots/snapshotProduct': this.snapshotProduct
             });
         });
 
@@ -105,6 +109,24 @@ describe('products', function () {
             this.context.request.body[0].op = 'bad';
             await this.updateProduct(this.context);
             expect(this.context.status).toEqual(400);
+        });
+
+        it('should pass the unpatched product to snapshotProduct', async function () {
+            await this.updateProduct(this.context);
+      
+            const expectedProduct = {
+                lastModified: '2018-01-02T03:04:05.000Z'
+            };
+            expect(this.snapshotProduct.calls.argsFor(0)[0]).toEqual(expectedProduct);
+        });
+
+        it('should not save if snapshotting fails', async function () {
+            this.snapshotProduct.and.callFake(() => Promise.reject());
+            try {
+                await this.updateProduct(this.context);
+            } catch (e) {}
+            
+            expect(this.documentClient.put).not.toHaveBeenCalled();
         });
 
         describe('validation fails', function () {

@@ -3,6 +3,7 @@ const documentClient = new AWS.DynamoDB.DocumentClient();
 const validateProduct = require('./validateProduct');
 const jsonPatch = require('fast-json-patch');
 const productsTableName = process.env.PRODUCTS_TABLE_NAME || 'Products';
+const snapshotProduct = require('./snapshots/snapshotProduct');
 
 async function loadProduct(id, Segment) {
     const result = await documentClient.get({
@@ -80,6 +81,7 @@ module.exports = async function(ctx) {
     const product = await loadProduct(id, ctx.segment);
     const lastModified = product.lastModified;
 
+    await snapshotProduct({...product});
     const response = validatePatchDocument(patchDocument) ||
         applyPatchDocument(product, patchDocument) ||
         validatePatchedDocument(product) ||

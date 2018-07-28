@@ -111,6 +111,14 @@ describe('products', function () {
             expect(this.broadcastProductEvent).toHaveBeenCalledWith('abc');
         });
 
+        it('should not save if broadcast fails', async function() {
+            this.broadcastProductEvent.and.callFake(() => Promise.reject());
+            try {
+                await this.updateProduct(this.context);
+            } catch(e) {}
+            expect(this.documentClient.put).not.toHaveBeenCalled();
+        });
+
         it('should be a conditional update', async function () {
             await this.updateProduct(this.context);
             expect(this.documentClient.put.calls.argsFor(0)[0].ConditionExpression).toEqual('lastModified = :lastModified');

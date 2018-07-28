@@ -78,6 +78,14 @@ describe('products', function () {
             expect(this.broadcastProductEvent).toHaveBeenCalledWith(id);
         });
 
+        it('should not save if broadcast fails', async function() {
+            this.broadcastProductEvent.and.callFake(() => Promise.reject());
+            try {
+                await this.createProduct(this.context);
+            } catch(e) {}
+            expect(this.documentClient.put).not.toHaveBeenCalled();
+        });
+
         it('should return validation errors as the body if validation fails', async function(){
             let errors = {"name": []};
             this.validateProduct.and.returnValue(errors);

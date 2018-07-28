@@ -85,6 +85,10 @@ Resources:
             Action: 
               - logs:*
             Resource: !GetAtt LogGroup.Arn
+          - Effect: "Allow"
+            Action: 
+              - sns:*
+            Resource: !Ref ProductEventsTopic
   TaskDefinition:
     Type: "AWS::ECS::TaskDefinition"
     DependsOn: 
@@ -221,3 +225,7 @@ Outputs:
     Value: !GetAtt LoadBalancer.LoadBalancerFullName
     Export:
       Name: !Sub "${AWS::StackName}:LoadBalancerFullName"
+  ProductEventsTopic:
+    Value: !Ref ProductEventsTopic
+    Export:
+      Name: !Sub "${AWS::StackName}:ProductEventsTopic"

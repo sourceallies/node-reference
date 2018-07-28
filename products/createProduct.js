@@ -19,8 +19,8 @@ module.exports = async function postProduct(ctx) {
 
     product.id = shortid.generate();
     product.lastModified = (new Date(Date.now())).toISOString();
-    await saveProduct(product);
     await broadcastProductEvent(product.id);    
+    await saveProduct(product);
     ctx.body = product;
 };
 

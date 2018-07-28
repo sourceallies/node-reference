@@ -116,6 +116,14 @@ describe('products', function () {
             expect(this.broadcastProductEvent).toHaveBeenCalledWith('abc');
         });
 
+        it('should not save if broadcast fails', async function() {
+            this.broadcastProductEvent.and.callFake(() => Promise.reject());
+            try {
+                await this.deleteProduct(this.context);
+            } catch(e) {}
+            expect(this.documentClient.update).not.toHaveBeenCalled();
+        });
+
         it('should set the status to 204 (no content)', async function (){
             await this.deleteProduct(this.context);
             expect(this.context.status).toEqual(204);

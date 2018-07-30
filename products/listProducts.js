@@ -28,6 +28,7 @@ module.exports = async function getProductList(ctx) {
         Segment: ctx.segment,
         TableName: productsTableName,
         Limit: 25,
+        FilterExpression: 'attribute_not_exists(deleted)',
         ExclusiveStartKey: getExclusiveStartKey(ctx)
     }).promise();
 

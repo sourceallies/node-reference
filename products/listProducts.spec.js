@@ -51,6 +51,12 @@ describe('products', function () {
             expect(this.documentClient.scan.calls.argsFor(0)[0].Limit).toEqual(25);
         });
 
+        it('should filter out deleted items', async function() {
+            await this.listProducts(this.context);
+            expect(this.documentClient.scan.calls.argsFor(0)[0].FilterExpression)
+                .toEqual('attribute_not_exists(deleted)');
+        });
+
         describe('pagination', function() {
             it('should not return a Link header if the returned LastEvaluatedKey is undefined', async function() {
                 delete this.response.LastEvaluatedKey;

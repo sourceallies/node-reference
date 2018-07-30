@@ -183,5 +183,23 @@ describe('products', function () {
             await this.updateProduct(this.context);
             expect(this.context.status).toEqual(409);
         });
+
+        describe('product has been deleted', function () {
+            beforeEach(function() {
+                this.getResponse.Item.deleted = true;
+            });
+        
+            it('should return a 410 response', async function () {
+                await this.updateProduct(this.context);
+        
+                expect(this.context.status).toEqual(410);
+            });
+        
+            it('should not call documentClient.put', async function () {
+                await this.updateProduct(this.context);
+        
+                expect(this.documentClient.put).not.toHaveBeenCalled();
+            });
+        });
     });
 });

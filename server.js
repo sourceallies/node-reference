@@ -19,6 +19,7 @@ function buildRouter() {
     router.get('/products', require('./products/listProducts'));
     router.get('/products/:id', require('./products/getProductById'));
     router.patch('/products/:id', require('./products/updateProduct'));
+    router.delete('/products/:id', require('./products/deleteProduct'));
     router.get('/products/:id/snapshots', require('./products/snapshots/listSnapshots'));
     return router;
 }

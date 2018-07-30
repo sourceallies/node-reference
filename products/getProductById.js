@@ -13,6 +13,8 @@ module.exports = async function(ctx) {
 
     if (!result.Item) {
         ctx.status = 404;
+    } else if (result.Item.deleted) {
+        ctx.status = 410;
     } else {
         ctx.body = result.Item;
     }

@@ -79,6 +79,12 @@ module.exports = async function(ctx) {
     const id = ctx.params.id;
     const patchDocument = ctx.request.body;
     const product = await loadProduct(id, ctx.segment);
+
+    if (product.deleted) {
+        ctx.status = 410;
+        return;
+    }
+    
     const lastModified = product.lastModified;
 
     await snapshotProduct({...product});

@@ -32,6 +32,9 @@ describe('products', function () {
             this.snapshotProduct = (product) => Promise.resolve();
             spyOn(this, 'snapshotProduct');
 
+            this.broadcastProductEvent = () => Promise.resolve();
+            spyOn(this, 'broadcastProductEvent').and.callThrough();
+
             this.deleteProduct = proxyquire('./deleteProduct', {
                 'aws-sdk': {
                     DynamoDB: {
@@ -40,7 +43,8 @@ describe('products', function () {
                         }
                     }
                 },
-                './snapshots/snapshotProduct': this.snapshotProduct             
+                './snapshots/snapshotProduct': this.snapshotProduct,
+                './broadcastProductEvent': this.broadcastProductEvent
             });
         });
 
@@ -120,6 +124,20 @@ describe('products', function () {
             });
             await this.deleteProduct(this.context);
             expect(this.context.status).toEqual(409);
+        });
+
+        it('should call broadcastProductEvent with the id', async function() {
+            await this.deleteProduct(this.context);
+            const id = this.documentClient.update.calls.argsFor(0)[0].Key.id;
+            expect(this.broadcastProductEvent).toHaveBeenCalledWith(id);
+        });
+    
+        it('should not save if broadcast fails', async function() {
+            this.broadcastProductEvent.and.callFake(() => Promise.reject());
+            try {
+                await this.deleteProduct(this.context);
+            } catch(e) {}
+            expect(this.documentClient.update).not.toHaveBeenCalled();
         });
     });
 });

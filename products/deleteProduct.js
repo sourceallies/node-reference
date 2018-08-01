@@ -1,6 +1,7 @@
 const AWS = require('aws-sdk');
 const documentClient = new AWS.DynamoDB.DocumentClient();
 const snapshotProduct = require('./snapshots/snapshotProduct');
+const broadcastProductEvent = require('./broadcastProductEvent');
 const productsTableName = process.env.PRODUCTS_TABLE_NAME || 'Products';
 
 async function loadProduct(id) {
@@ -39,7 +40,10 @@ async function setDeleted(id, lastModified) {
 module.exports = async function(ctx) {
     const id = ctx.params.id;
     const product = await loadProduct(id);
-    await snapshotProduct({...product});
+    await Promise.all([
+        snapshotProduct({...product}),
+        broadcastProductEvent(product.id)
+    ]);
     const lastModified = product.lastModified;
 
     ctx.status = await setDeleted(id, lastModified);

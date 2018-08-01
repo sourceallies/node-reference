@@ -4,6 +4,7 @@ const validateProduct = require('./validateProduct');
 const jsonPatch = require('fast-json-patch');
 const productsTableName = process.env.PRODUCTS_TABLE_NAME || 'Products';
 const snapshotProduct = require('./snapshots/snapshotProduct');
+const broadcastProductEvent = require('./broadcastProductEvent');
 
 async function loadProduct(id, Segment) {
     const result = await documentClient.get({
@@ -87,7 +88,10 @@ module.exports = async function(ctx) {
     
     const lastModified = product.lastModified;
 
-    await snapshotProduct({...product});
+    await Promise.all([
+        snapshotProduct({...product}),
+        broadcastProductEvent(product.id)
+    ]);
     const response = validatePatchDocument(patchDocument) ||
         applyPatchDocument(product, patchDocument) ||
         validatePatchedDocument(product) ||

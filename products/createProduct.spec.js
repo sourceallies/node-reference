@@ -27,6 +27,9 @@ describe('products', function () {
             this.validateProduct = (product) => undefined;
             spyOn(this, 'validateProduct').and.callThrough();
 
+            this.broadcastProductEvent = () => Promise.resolve();
+            spyOn(this, 'broadcastProductEvent').and.callThrough();
+
             this.createProduct = proxyquire('./createProduct', {
                 'aws-sdk': {
                     DynamoDB: {
@@ -35,7 +38,8 @@ describe('products', function () {
                         }
                     }
                 },
-                './validateProduct': this.validateProduct
+                './validateProduct': this.validateProduct,
+                './broadcastProductEvent': this.broadcastProductEvent
             });
         });
 
@@ -76,6 +80,20 @@ describe('products', function () {
         it('should populate an id on the product', async function () {
             await this.createProduct(this.context);
             expect(this.documentClient.put.calls.argsFor(0)[0].Item.id).toBeDefined();
+        });
+
+        it('should call broadcastProductEvent with the id', async function() {
+            await this.createProduct(this.context);
+            const id = this.documentClient.put.calls.argsFor(0)[0].Item.id;
+            expect(this.broadcastProductEvent).toHaveBeenCalledWith(id);
+        });
+    
+        it('should not save if broadcast fails', async function() {
+            this.broadcastProductEvent.and.callFake(() => Promise.reject());
+            try {
+                await this.createProduct(this.context);
+            } catch(e) {}
+            expect(this.documentClient.put).not.toHaveBeenCalled();
         });
     });
 });
